@@ -3,6 +3,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import asyncio
 import os
 from flask import Flask, request
+import threading
 
 # Get bot token from environment variables
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY")
@@ -23,11 +24,10 @@ subscribed_users = set()
 application = Application.builder().token(TOKEN).build()
 
 @app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
+async def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    if application.running:
-        asyncio.create_task(application.process_update(update))  # ✅ Runs only if initialized
-    return "OK", 200  # ✅ Returns response immediately
+    await application.process_update(update)  # ✅ Proper async handling
+    return "OK", 200
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -113,14 +113,21 @@ application.add_handler(CommandHandler("tradingview", tradingview_alert))
 async def set_webhook():
     await application.bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
 
+def run_flask():
+    """Runs Flask in a separate thread to avoid blocking."""
+    app.run(host="0.0.0.0", port=PORT, use_reloader=False)
+
 async def main():
     """Initialize and start the bot properly."""
     await application.initialize()  # ✅ Proper async initialization
     await application.start()  # ✅ Ensure bot is running
     await set_webhook()  # ✅ Set webhook
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, app.run, "0.0.0.0", PORT)  # ✅ Run Flask in background
-    await application.run_polling()  # ✅ Keeps bot running
+
+    # Start Flask in a separate thread
+    threading.Thread(target=run_flask, daemon=True).start()
+
+    # Keep the bot running
+    await application.run_polling()
 
 if __name__ == "__main__":
     asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
