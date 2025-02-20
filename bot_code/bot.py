@@ -5,8 +5,7 @@ import os
 from flask import Flask, request
 
 TOKEN = os.getenv("7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY")  # Get bot token from Railway environment variables
-WEBHOOK_URL = os.getenv("https://vpass-telegram-bot-production.up.railway.app/
-")  # Get webhook URL from Railway
+WEBHOOK_URL = os.getenv("https://vpass-telegram-bot-production.up.railway.app")  # Get webhook URL from Railway
 
 # Flask app for handling webhook requests
 app = Flask(__name__)
