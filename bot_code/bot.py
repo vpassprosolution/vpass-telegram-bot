@@ -4,8 +4,11 @@ import asyncio
 import os
 from flask import Flask, request
 
-TOKEN = os.getenv("7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY")  # Get bot token from Railway environment variables
-WEBHOOK_URL = os.getenv("https://vpass-telegram-bot-production.up.railway.app")  # Get webhook URL from Railway
+# Get bot token from environment variables
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Webhook URL
+WEBHOOK_URL = "https://vpass-telegram-bot-production.up.railway.app"
 
 # Flask app for handling webhook requests
 app = Flask(__name__)
@@ -21,7 +24,7 @@ def webhook():
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.message.chat.id
     welcome_text = """Welcome to VPASS Pro – Your AI-Powered Trading Companion
     
 At VPASS Pro, we redefine trading excellence through cutting-edge AI technology. Our mission is to empower you with precise, real-time trading signals and actionable insights, enabling you to make informed decisions in dynamic markets.
@@ -32,6 +35,7 @@ Explore the future of trading today. Let’s elevate your strategy together.
 """
     with open("images/welcome.png", "rb") as image:
         await context.bot.send_photo(chat_id=chat_id, photo=InputFile(image))
+    
     keyboard = [[InlineKeyboardButton("🚀 Try VPASS Pro Now", callback_data="show_main_buttons")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(chat_id=chat_id, text=welcome_text, reply_markup=reply_markup)
@@ -62,14 +66,14 @@ async def ai_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def subscribe_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    chat_id = query.message.chat_id
+    chat_id = query.message.chat.id
     subscribed_users.add(chat_id)
     await query.answer("Subscribed to Gold Signals!")
     await context.bot.send_message(chat_id=chat_id, text="✅ You have subscribed to Gold Signals. You will receive updates when a new signal is detected.")
 
 async def unsubscribe_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    chat_id = query.message.chat_id
+    chat_id = query.message.chat.id
     if chat_id in subscribed_users:
         subscribed_users.remove(chat_id)
         await query.answer("Unsubscribed from Gold Signals!")
@@ -104,5 +108,10 @@ async def set_webhook():
     await application.bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
 
 if __name__ == "__main__":
-    asyncio.run(set_webhook())
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(set_webhook())
+    except RuntimeError:
+        asyncio.run(set_webhook())
+
     app.run(host="0.0.0.0", port=8080)
