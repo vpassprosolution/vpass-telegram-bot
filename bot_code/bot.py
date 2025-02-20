@@ -19,18 +19,13 @@ app = Flask(__name__)
 # Dictionary to store subscribed users
 subscribed_users = set()
 
-# Initialize bot application
+# Initialize Telegram bot application
 application = Application.builder().token(TOKEN).build()
 
-# ✅ Ensure the bot is initialized before handling updates
-async def initialize_application():
-    await application.initialize()
-    await application.start()
-
 @app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
+async def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    asyncio.create_task(application.process_update(update))  # ✅ Non-blocking update processing
+    await application.process_update(update)
     return "OK", 200
 
 # Function to handle /start command
@@ -102,7 +97,7 @@ async def ai_trade(update: Update, context: ContextTypes.DEFAULT_TYPE): await up
 async def deepseek(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.callback_query.answer("Deepseek feature coming soon!")
 async def chatgpt(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.callback_query.answer("ChatGPT feature coming soon!")
 
-# Add handlers
+# Add Handlers to the Bot
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CallbackQueryHandler(show_main_buttons, pattern="show_main_buttons"))
 application.add_handler(CallbackQueryHandler(ai_trade, pattern="ai_trade"))
@@ -120,10 +115,8 @@ async def set_webhook():
 if __name__ == "__main__":
     try:
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(initialize_application())  # ✅ Ensure bot is initialized before starting
         loop.run_until_complete(set_webhook())
     except RuntimeError:
-        asyncio.run(initialize_application())
         asyncio.run(set_webhook())
 
     app.run(host="0.0.0.0", port=PORT)
