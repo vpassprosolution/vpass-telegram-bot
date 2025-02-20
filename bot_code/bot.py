@@ -3,7 +3,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import asyncio
 import os
 from flask import Flask, request
-import threading
 
 # Get bot token from environment variables
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY")
@@ -113,21 +112,12 @@ application.add_handler(CommandHandler("tradingview", tradingview_alert))
 async def set_webhook():
     await application.bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
 
-def run_flask():
-    """Runs Flask in a separate thread to avoid blocking."""
-    app.run(host="0.0.0.0", port=PORT, use_reloader=False)
-
 async def main():
     """Initialize and start the bot properly."""
     await application.initialize()  # ✅ Proper async initialization
-    await application.start()  # ✅ Ensure bot is running
     await set_webhook()  # ✅ Set webhook
-
-    # Start Flask in a separate thread
-    threading.Thread(target=run_flask, daemon=True).start()
-
-    # Keep the bot running
-    await application.run_polling()
+    from waitress import serve  # Use production WSGI server
+    serve(app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
     asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
