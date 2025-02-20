@@ -25,14 +25,13 @@ application = Application.builder().token(TOKEN).build()
 @app.route(f"/{TOKEN}", methods=["POST"])
 async def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update)  # Proper async handling in Flask
+    await application.initialize()  # Ensure the bot is initialized
+    await application.process_update(update)
     return "OK", 200
-
-
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.message.chat_id  # Fixed incorrect `chat.id`
     welcome_text = """Welcome to VPASS Pro – Your AI-Powered Trading Companion
 
 At VPASS Pro, we redefine trading excellence through cutting-edge AI technology. Our mission is to empower you with precise, real-time trading signals and actionable insights, enabling you to make informed decisions in dynamic markets.
