@@ -1,8 +1,14 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import asyncio
+import os
+from flask import Flask, request, jsonify
 
-TOKEN = "7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY"  # Your actual bot token
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY") 
+WEBHOOK_URL = "https://vpass-telegram-bot-production.up.railway.app"
+
+# Flask app for handling webhooks
+app = Flask(__name__)
 
 # Dictionary to store subscribed users
 subscribed_users = set()
@@ -73,37 +79,43 @@ async def unsubscribe_signal(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.answer("You are not subscribed!")
 
 # Function to handle TradingView Webhook alerts
-async def tradingview_alert(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.message.text
+@app.route("/webhook", methods=["POST"])
+def tradingview_webhook():
+    data = request.get_json()
+    message = data.get("message", "⚠️ No message received from TradingView!")
+
     for user in subscribed_users:
-        await context.bot.send_message(chat_id=user, text=message)
+        asyncio.run(application.bot.send_message(chat_id=user, text=message))
+    
+    return jsonify({"status": "success", "message": "Alert sent to subscribed users"}), 200
 
 # Placeholder functions for other features
 async def ai_trade(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.callback_query.answer("AI Trade feature coming soon!")
 async def deepseek(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.callback_query.answer("Deepseek feature coming soon!")
 async def chatgpt(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.callback_query.answer("ChatGPT feature coming soon!")
 
-def main():
-    app = Application.builder().token(TOKEN).build()
-    
-    # Handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(show_main_buttons, pattern="show_main_buttons"))
-    app.add_handler(CallbackQueryHandler(ai_trade, pattern="ai_trade"))
-    app.add_handler(CallbackQueryHandler(ai_signal, pattern="ai_signal"))
-    app.add_handler(CallbackQueryHandler(subscribe_signal, pattern="subscribe_signal"))
-    app.add_handler(CallbackQueryHandler(unsubscribe_signal, pattern="unsubscribe_signal"))
-    app.add_handler(CallbackQueryHandler(deepseek, pattern="deepseek"))
-    app.add_handler(CallbackQueryHandler(chatgpt, pattern="chatgpt"))
-    app.add_handler(CommandHandler("tradingview", tradingview_alert))
-    
-    print("Bot is running... Press Ctrl+C to stop.")
-    
-    # Run the bot
-    try:
-        asyncio.run(app.run_polling())
-    except KeyboardInterrupt:
-        print("Bot stopped by user.")
+# Initialize bot application
+application = Application.builder().token(TOKEN).build()
+
+# Handlers
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CallbackQueryHandler(show_main_buttons, pattern="show_main_buttons"))
+application.add_handler(CallbackQueryHandler(ai_trade, pattern="ai_trade"))
+application.add_handler(CallbackQueryHandler(ai_signal, pattern="ai_signal"))
+application.add_handler(CallbackQueryHandler(subscribe_signal, pattern="subscribe_signal"))
+application.add_handler(CallbackQueryHandler(unsubscribe_signal, pattern="unsubscribe_signal"))
+application.add_handler(CallbackQueryHandler(deepseek, pattern="deepseek"))
+application.add_handler(CallbackQueryHandler(chatgpt, pattern="chatgpt"))
+
+# Set Webhook
+async def set_webhook():
+    await application.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+
+async def main():
+    """Initialize and start the bot properly."""
+    await application.initialize()  # ✅ Proper async initialization
+    await set_webhook()  # ✅ Set webhook
+    app.run(host="0.0.0.0", port=8080)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
