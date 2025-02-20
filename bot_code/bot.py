@@ -25,12 +25,12 @@ application = Application.builder().token(TOKEN).build()
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    asyncio.create_task(application.process_update(update))  # Runs in background
+    asyncio.run_coroutine_threadsafe(application.process_update(update), asyncio.get_event_loop())
     return "OK", 200  # Returns response immediately
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id  # Fixed incorrect `chat.id`
+    chat_id = update.message.chat_id
     welcome_text = """Welcome to VPASS Pro – Your AI-Powered Trading Companion
 
 At VPASS Pro, we redefine trading excellence through cutting-edge AI technology. Our mission is to empower you with precise, real-time trading signals and actionable insights, enabling you to make informed decisions in dynamic markets.
