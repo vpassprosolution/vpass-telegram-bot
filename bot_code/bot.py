@@ -23,10 +23,10 @@ subscribed_users = set()
 application = Application.builder().token(TOKEN).build()
 
 @app.route(f"/{TOKEN}", methods=["POST"])
-async def webhook():
+def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update)  # ✅ Proper async handling
-    return "OK", 200
+    asyncio.create_task(application.process_update(update))  # ✅ Runs in background
+    return "OK", 200  # ✅ Returns response immediately
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -116,7 +116,8 @@ async def main():
     """Initialize and start the bot properly."""
     await application.initialize()  # ✅ Proper async initialization
     await set_webhook()  # ✅ Set webhook
-    app.run(host="0.0.0.0", port=PORT)
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, app.run, "0.0.0.0", PORT)  # ✅ Run Flask in background
 
 if __name__ == "__main__":
     asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
