@@ -1,7 +1,3 @@
-flask
-gunicorn
+Flask[async]
 python-telegram-bot
-
-flask[async]
-
-
+gunicorn
