@@ -23,11 +23,11 @@ subscribed_users = set()
 application = Application.builder().token(TOKEN).build()
 
 @app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
+async def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(application.process_update(update))
+    await application.process_update(update)  # Proper async handling in Flask
     return "OK", 200
+
 
 
 # Function to handle /start command
