@@ -21,12 +21,11 @@ subscribed_users = set()
 
 # Initialize Telegram bot application **PROPERLY**
 application = Application.builder().token(TOKEN).build()
-application.initialize()  # 🔥 Fix: Ensure the application is initialized before use
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 async def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update)  # 🔥 Proper async handling in Flask
+    await application.process_update(update)  # 🔥 Proper async handling
     return "OK", 200  # Returns response immediately
 
 # Function to handle /start command
@@ -118,5 +117,10 @@ if __name__ == "__main__":
         asyncio.run(set_webhook())  # Ensure webhook is properly set
     except RuntimeError:
         pass  # Ignore if the event loop is already running
+
+    loop = asyncio.new_event_loop()  # 🔥 Fix: Create a new event loop
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(application.initialize())  # 🔥 Fix: Properly initialize application
 
     app.run(host="0.0.0.0", port=PORT)
