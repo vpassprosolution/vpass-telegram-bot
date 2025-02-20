@@ -1,7 +1,5 @@
 flask
 
-flask[async]
+gunicorn
 
 python-telegram-bot
-
-uvicorn

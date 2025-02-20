@@ -1,5 +1,6 @@
 web: python bot_code/bot.py
 
-web: uvicorn bot_code.bot:app --host 0.0.0.0 --port 8080
+web: gunicorn -w 4 -b 0.0.0.0:8080 bot:app
+
 
 
