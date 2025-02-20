@@ -2,3 +2,6 @@ flask
 gunicorn
 python-telegram-bot
 
+flask[async]
+
+
