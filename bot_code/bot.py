@@ -25,7 +25,8 @@ application = Application.builder().token(TOKEN).build()
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    asyncio.create_task(application.process_update(update))  # ✅ Runs in background
+    if application.running:
+        asyncio.create_task(application.process_update(update))  # ✅ Runs only if initialized
     return "OK", 200  # ✅ Returns response immediately
 
 # Function to handle /start command
@@ -115,9 +116,11 @@ async def set_webhook():
 async def main():
     """Initialize and start the bot properly."""
     await application.initialize()  # ✅ Proper async initialization
+    await application.start()  # ✅ Ensure bot is running
     await set_webhook()  # ✅ Set webhook
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, app.run, "0.0.0.0", PORT)  # ✅ Run Flask in background
+    await application.run_polling()  # ✅ Keeps bot running
 
 if __name__ == "__main__":
     asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
