@@ -120,4 +120,8 @@ async def main():
     serve(app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
-    asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
+    import waitress  # Use Waitress for stable production
+    waitress.serve(app, host="0.0.0.0", port=PORT)
+
+
+
