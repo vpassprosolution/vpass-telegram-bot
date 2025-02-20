@@ -19,18 +19,18 @@ app = Flask(__name__)
 # Dictionary to store subscribed users
 subscribed_users = set()
 
-# Initialize Telegram bot application **PROPERLY**
+# Initialize Telegram bot application
 application = Application.builder().token(TOKEN).build()
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 async def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update)  # 🔥 Proper async handling
-    return "OK", 200  # Returns response immediately
+    await application.process_update(update)  # ✅ Proper async handling
+    return "OK", 200
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id  # Fixed incorrect `chat.id`
+    chat_id = update.message.chat_id
     welcome_text = """Welcome to VPASS Pro – Your AI-Powered Trading Companion
 
 At VPASS Pro, we redefine trading excellence through cutting-edge AI technology. Our mission is to empower you with precise, real-time trading signals and actionable insights, enabling you to make informed decisions in dynamic markets.
@@ -112,15 +112,11 @@ application.add_handler(CommandHandler("tradingview", tradingview_alert))
 async def set_webhook():
     await application.bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(set_webhook())  # Ensure webhook is properly set
-    except RuntimeError:
-        pass  # Ignore if the event loop is already running
-
-    loop = asyncio.new_event_loop()  # 🔥 Fix: Create a new event loop
-    asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(application.initialize())  # 🔥 Fix: Properly initialize application
-
+async def main():
+    """Initialize and start the bot properly."""
+    await application.initialize()  # ✅ Proper async initialization
+    await set_webhook()  # ✅ Set webhook
     app.run(host="0.0.0.0", port=PORT)
+
+if __name__ == "__main__":
+    asyncio.run(main())  # ✅ Use asyncio.run() to execute the main async function
