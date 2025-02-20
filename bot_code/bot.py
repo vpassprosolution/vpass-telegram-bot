@@ -23,10 +23,10 @@ subscribed_users = set()
 application = Application.builder().token(TOKEN).build()
 
 @app.route(f"/{TOKEN}", methods=["POST"])
-async def webhook():
+def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update)
-    return "OK", 200
+    asyncio.create_task(application.process_update(update))  # Runs in background
+    return "OK", 200  # Returns response immediately
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
