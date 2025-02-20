@@ -102,16 +102,26 @@ application.add_handler(CallbackQueryHandler(ai_signal, pattern="ai_signal"))
 application.add_handler(CallbackQueryHandler(subscribe_signal, pattern="subscribe_signal"))
 application.add_handler(CallbackQueryHandler(unsubscribe_signal, pattern="unsubscribe_signal"))
 
-# ✅ Run Flask Webhook
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
-
-# ✅ Run Both Telegram Bot & Flask Webhook
-async def main():
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-    run_flask()
-
+# ✅ Production WSGI Setup for Railway
 if __name__ == "__main__":
-    asyncio.run(main())
+    from gunicorn.app.base import BaseApplication
+
+    class GunicornApp(BaseApplication):
+        def __init__(self, app, options=None):
+            self.options = options or {}
+            self.application = app
+            super().__init__()
+
+        def load_config(self):
+            for key, value in self.options.items():
+                self.cfg.set(key, value)
+
+        def load(self):
+            return self.application
+
+    options = {
+        "bind": "0.0.0.0:8080",
+        "workers": 4,  # Adjust number of workers based on your needs
+    }
+
+    GunicornApp(app, options).run()
