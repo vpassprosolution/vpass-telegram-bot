@@ -25,8 +25,10 @@ application = Application.builder().token(TOKEN).build()
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    asyncio.run_coroutine_threadsafe(application.process_update(update), asyncio.get_event_loop())
-    return "OK", 200  # Returns response immediately
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(application.process_update(update))
+    return "OK", 200
+
 
 # Function to handle /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
