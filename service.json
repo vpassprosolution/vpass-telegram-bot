@@ -1,0 +1,6 @@
+{
+  "build": {
+    "base": "python"
+  },
+  "start": "python bot_code/bot.py"
+}
