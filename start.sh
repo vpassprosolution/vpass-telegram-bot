@@ -1,2 +1,2 @@
-'#!/bin/bash' 
-'python bot.py' 
+#!/bin/sh
+/opt/venv/bin/python bot.py
