@@ -1,127 +1,102 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from flask import Flask, request, jsonify
 import asyncio
+import logging
 import os
+import json
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
+from aiogram.filters import Command
+from fastapi import FastAPI, Request
+import uvicorn
+from dotenv import load_dotenv
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7900613582:AAEFQbGO7gk03lHffMNvDRnfWGSbIkH1gQY")
+# Load bot token from .env file
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Flask app for webhook
-app = Flask(__name__)
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
 
-# Dictionary to store subscribed users
-subscribed_users = set()
+logging.basicConfig(level=logging.INFO)
 
-# ✅ Webhook Route to Receive TradingView Alerts
-@app.route("/tradingview", methods=["POST"])
-def tradingview_webhook():
-    data = request.get_json()
-    if not data or "message" not in data:
-        return jsonify({"error": "Invalid request"}), 400
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
 
-    message = data["message"]
-    asyncio.run(send_signal_to_subscribers(message))  # Send signal to Telegram users
+app = FastAPI(lifespan=None)  # Disable lifespan warning
 
-    return jsonify({"status": "Message sent to subscribers"}), 200
 
-async def send_signal_to_subscribers(message):
-    """Send TradingView alerts to subscribed users."""
-    for user in subscribed_users:
-        await application.bot.send_message(chat_id=user, text=message)
+SUBSCRIPTION_FILE = "subscribed_users.json"
 
-# ✅ Function to Handle /start Command
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+def load_subscriptions():
+    """Load subscribed users from file."""
+    if os.path.exists(SUBSCRIPTION_FILE):
+        with open(SUBSCRIPTION_FILE, "r") as file:
+            return set(json.load(file))
+    return set()
+
+def save_subscriptions():
+    """Save subscribed users to file."""
+    with open(SUBSCRIPTION_FILE, "w") as file:
+        json.dump(list(subscribed_users), file)
+
+subscribed_users = load_subscriptions()
+
+@dp.message(Command("start"))
+async def start_command(message: types.Message):
+    chat_id = message.chat.id
     welcome_text = """Welcome to VPASS Pro – Your AI-Powered Trading Companion
 
-At VPASS Pro, we redefine trading excellence through cutting-edge AI technology. Our mission is to empower you with precise, real-time trading signals and actionable insights, enabling you to make informed decisions in dynamic markets.
-
-Whether you're navigating volatile trends or optimizing your portfolio, VPASS Pro is your trusted partner for smarter, data-driven trading.
-
+At VPASS Pro, we redefine trading excellence through cutting-edge AI technology.
+Our mission is to empower you with precise, real-time trading signals and actionable insights.
 Explore the future of trading today. Let’s elevate your strategy together.
 """
-    # Send Welcome Image
-    with open("images/welcome.png", "rb") as image:
-        await context.bot.send_photo(chat_id=chat_id, photo=InputFile(image))
 
-    # Send Welcome Text with Button
-    keyboard = [[InlineKeyboardButton("🚀 Try VPASS Pro Now", callback_data="show_main_buttons")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_message(chat_id=chat_id, text=welcome_text, reply_markup=reply_markup)
-
-# ✅ Function to Show Main Buttons
-async def show_main_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    keyboard = [
-        [InlineKeyboardButton("📈 AI Trade", callback_data="ai_trade"),
-         InlineKeyboardButton("📊 AI Signal", callback_data="ai_signal")],
-        [InlineKeyboardButton("🔍 Deepseek", callback_data="deepseek"),
-         InlineKeyboardButton("🤖 ChatGPT", callback_data="chatgpt")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text="Access Your Exclusive Trading Tools:", reply_markup=reply_markup)
-
-# ✅ AI Signal Feature
-async def ai_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    keyboard = [
-        [InlineKeyboardButton("📩 Get Gold Signal", callback_data="subscribe_signal")],
-        [InlineKeyboardButton("🚫 Unsubscribe Signal", callback_data="unsubscribe_signal")],
-        [InlineKeyboardButton("🔙 Back", callback_data="show_main_buttons")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text="AI Signal Options:", reply_markup=reply_markup)
-
-# ✅ Subscribe User to TradingView Alerts
-async def subscribe_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    chat_id = query.message.chat_id
-    subscribed_users.add(chat_id)
-    await query.answer("Subscribed to Gold Signals!")
-    await context.bot.send_message(chat_id=chat_id, text="✅ You have subscribed to Gold Signals. You will receive updates when a new signal is detected.")
-
-# ✅ Unsubscribe User from TradingView Alerts
-async def unsubscribe_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    chat_id = query.message.chat_id
-    if chat_id in subscribed_users:
-        subscribed_users.remove(chat_id)
-        await query.answer("Unsubscribed from Gold Signals!")
-        await context.bot.send_message(chat_id=chat_id, text="🚫 You have unsubscribed from Gold Signals. You will no longer receive updates.")
+    video_path = "videos/welcome.mp4"
+    if os.path.exists(video_path):
+        video = FSInputFile(video_path)
+        await bot.send_video(chat_id=chat_id, video=video, supports_streaming=True)
     else:
-        await query.answer("You are not subscribed!")
+        logging.error(f"❌ Video not found: {video_path}")
+        await message.answer("⚠️ Welcome video not found. Please contact support.")
 
-# ✅ Initialize Telegram Bot
-application = Application.builder().token(TOKEN).build()
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Try VPASS Pro Now", callback_data="show_main_buttons")]
+        ]
+    )
+    await bot.send_message(chat_id=chat_id, text=welcome_text, reply_markup=keyboard)
 
-application.add_handler(CommandHandler("start", start))
-application.add_handler(CallbackQueryHandler(show_main_buttons, pattern="show_main_buttons"))
-application.add_handler(CallbackQueryHandler(ai_signal, pattern="ai_signal"))
-application.add_handler(CallbackQueryHandler(subscribe_signal, pattern="subscribe_signal"))
-application.add_handler(CallbackQueryHandler(unsubscribe_signal, pattern="unsubscribe_signal"))
+@app.post("/tradingview")
+async def tradingview_alert(request: Request):
+    try:
+        data = await request.json()
+        message = data.get("message", "🔔 New TradingView Alert!")
+        for user in subscribed_users:
+            try:
+                await bot.send_message(chat_id=user, text=message)
+            except Exception as e:
+                logging.error(f"❌ Failed to send message to {user}: {e}")
+        return {"status": "success"}
+    except Exception as e:
+        logging.error(f"❌ Error receiving TradingView alert: {e}")
+        return {"status": "error", "message": str(e)}
 
-# ✅ Production WSGI Setup for Railway
+import asyncio
+import uvicorn
+
+async def start_bot():
+    print("🚀 Starting Telegram Bot...")
+    await dp.start_polling(bot)  # Start Aiogram bot
+
+async def start_api():
+    print("🌍 Starting FastAPI Server...")
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Start FastAPI
+
+async def main():
+    task1 = asyncio.create_task(start_bot())
+    task2 = asyncio.create_task(start_api())
+    await asyncio.gather(task1, task2)  # Run both tasks together
+
 if __name__ == "__main__":
-    from gunicorn.app.base import BaseApplication
+    asyncio.run(main())  # Start everything
 
-    class GunicornApp(BaseApplication):
-        def __init__(self, app, options=None):
-            self.options = options or {}
-            self.application = app
-            super().__init__()
 
-        def load_config(self):
-            for key, value in self.options.items():
-                self.cfg.set(key, value)
-
-        def load(self):
-            return self.application
-
-    options = {
-        "bind": "0.0.0.0:8080",
-        "workers": 4,  # Adjust number of workers based on your needs
-    }
-
-    GunicornApp(app, options).run()
