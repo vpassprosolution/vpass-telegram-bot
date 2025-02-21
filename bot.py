@@ -1,4 +1,4 @@
-import asyncio
+import httpx
 import logging
 import os
 import json
@@ -16,6 +16,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
+
+WEBHOOK_URL = "https://your-railway-url/webhook"  # ✅ Replace with your actual Railway bot URL
 
 logging.basicConfig(level=logging.INFO)
 
@@ -49,15 +51,7 @@ At VPASS Pro, we redefine trading excellence through cutting-edge AI technology.
 Our mission is to empower you with precise, real-time trading signals and actionable insights.
 Explore the future of trading today. Let’s elevate your strategy together.
 """
-    
-    video_path = "videos/welcome.mp4"
-    if os.path.exists(video_path):
-        video = FSInputFile(video_path)
-        await bot.send_video(chat_id=chat_id, video=video, supports_streaming=True)
-    else:
-        logging.error(f"❌ Video not found: {video_path}")
-        await message.answer("⚠️ Welcome video not found. Please contact support.")
-    
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🚀 Try VPASS Pro Now", callback_data="show_main_buttons")]
@@ -116,66 +110,62 @@ async def gold_signal(callback_query: types.CallbackQuery):
 # ✅ Handle Subscribe to Gold Signals
 @dp.callback_query(lambda c: c.data == "subscribe_gold")
 async def subscribe_gold(callback_query: types.CallbackQuery):
-    chat_id = callback_query.message.chat.id
-    if chat_id not in subscribed_users:
-        subscribed_users.add(chat_id)
-        save_subscriptions()
-        await callback_query.answer("✅ Subscribed to Gold Signals!")
-        await bot.send_message(chat_id=chat_id, text="📩 You are now subscribed to Gold Signals. You will receive alerts automatically.")
-    else:
-        await callback_query.answer("✅ You are already subscribed!")
+    chat_id = str(callback_query.message.chat.id)  # Convert chat_id to string
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://tradingviewwebhook-production.up.railway.app/subscribe",
+                json={"user_id": chat_id}
+            )
+        if response.status_code == 200:
+            await callback_query.answer("✅ Subscribed to Gold Signals!")
+            await bot.send_message(chat_id=chat_id, text="📩 You are now subscribed to Gold Signals. You will receive alerts automatically.")
+        else:
+            await callback_query.answer("❌ Subscription failed. Try again later.")
+    except Exception as e:
+        logging.error(f"❌ Subscription error: {e}")
+        await callback_query.answer("⚠️ Error subscribing. Try again later.")
 
 # ✅ Handle Unsubscribe from Gold Signals
 @dp.callback_query(lambda c: c.data == "unsubscribe_gold")
 async def unsubscribe_gold(callback_query: types.CallbackQuery):
-    chat_id = callback_query.message.chat.id
-    if chat_id in subscribed_users:
-        subscribed_users.remove(chat_id)
-        save_subscriptions()
-        await callback_query.answer("🚫 Unsubscribed from Gold Signals!")
-        await bot.send_message(chat_id=chat_id, text="❌ You have unsubscribed from Gold Signals.")
-    else:
-        await callback_query.answer("⚠️ You are not subscribed!")
-
-# ✅ Handle TradingView webhook alerts (Only sends to subscribed users)
-@app.post("/tradingview")
-async def tradingview_alert(request: Request):
+    chat_id = str(callback_query.message.chat.id)  # Convert chat_id to string
     try:
-        data = await request.json()
-        message = data.get("message", "🔔 New TradingView Alert!")
-
-        if not subscribed_users:
-            logging.info("⚠️ No users are subscribed, skipping message.")
-            return {"status": "no_subscribers"}
-
-        for user in subscribed_users:
-            try:
-                await bot.send_message(chat_id=user, text=message)
-                logging.info(f"✅ Sent TradingView alert to {user}")
-            except Exception as e:
-                logging.error(f"❌ Failed to send message to {user}: {e}")
-
-        return {"status": "success", "sent_to": len(subscribed_users)}
-    
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://tradingviewwebhook-production.up.railway.app/unsubscribe",
+                json={"user_id": chat_id}
+            )
+        if response.status_code == 200:
+            await callback_query.answer("🚫 Unsubscribed from Gold Signals!")
+            await bot.send_message(chat_id=chat_id, text="❌ You have unsubscribed from Gold Signals.")
+        else:
+            await callback_query.answer("❌ Unsubscription failed. Try again later.")
     except Exception as e:
-        logging.error(f"❌ Error receiving TradingView alert: {e}")
-        return {"status": "error", "message": str(e)}
+        logging.error(f"❌ Unsubscription error: {e}")
+        await callback_query.answer("⚠️ Error unsubscribing. Try again later.")
 
-# ✅ Run Telegram bot and FastAPI server together
-async def start_bot():
-    print("🤖 Telegram Bot is Running...")
-    await dp.start_polling(bot)
+# ✅ Webhook for Telegram Updates
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    update = await request.json()
+    update_obj = types.Update(**update)
+    await dp.feed_update(bot, update_obj)
+    return {"status": "ok"}
 
-async def start_api():
-    print("🌍 FastAPI Server is Running...")
-    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)), loop="asyncio")
-    server = uvicorn.Server(config)
-    await server.serve()
+# ✅ Set webhook on startup
+@app.on_event("startup")
+async def on_startup():
+    await bot.set_webhook(WEBHOOK_URL)
+    logging.info(f"🚀 Webhook set: {WEBHOOK_URL}")
 
-async def main():
-    task1 = asyncio.create_task(start_bot())
-    task2 = asyncio.create_task(start_api())
-    await asyncio.gather(task1, task2)  # ✅ Run both services together
+# ✅ Remove webhook on shutdown
+@app.on_event("shutdown")
+async def on_shutdown():
+    await bot.delete_webhook()
+    logging.info("🛑 Webhook removed")
 
+# ✅ Run FastAPI Server
 if __name__ == "__main__":
-    asyncio.run(main())
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
