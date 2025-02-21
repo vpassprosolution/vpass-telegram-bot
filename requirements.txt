@@ -1,7 +1,9 @@
-python-telegram-bot==20.0
+aiogram==3.0.0
 
-flask
-
-python-telegram-bot
+fastapi
 
 uvicorn
+
+python-dotenv
+
+gunicorn
