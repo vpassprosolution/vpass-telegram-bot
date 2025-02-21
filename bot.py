@@ -17,16 +17,17 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
 
+# ✅ Define Webhook URL - Ensure it's the correct Railway bot service URL
 WEBHOOK_URL = "https://web-production-ceec.up.railway.app/webhook"
 
-"
-"  # ✅ Replace with your actual Railway bot URL
-
+# ✅ Setup logging for debugging
 logging.basicConfig(level=logging.INFO)
 
+# ✅ Initialize bot and dispatcher
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(storage=MemoryStorage())  # ✅ Use MemoryStorage for proper callback handling
+dp = Dispatcher(storage=MemoryStorage())  
 
+# ✅ Initialize FastAPI
 app = FastAPI()
 
 SUBSCRIPTION_FILE = "subscribed_users.json"
