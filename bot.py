@@ -9,21 +9,27 @@ from fastapi import FastAPI, Request
 import uvicorn
 from dotenv import load_dotenv
 
-# Load bot token from .env file
+# ✅ Debugging Message
+print("🚀 VPASS Pro Bot is starting...")
+
+# ✅ Load bot token from .env file
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
 
+# ✅ Configure Logging
 logging.basicConfig(level=logging.INFO)
 
+# ✅ Initialize Telegram Bot and Dispatcher
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-app = FastAPI(lifespan=None)  # Disable lifespan warning
+# ✅ Initialize FastAPI without lifespan warning
+app = FastAPI(lifespan=None)
 
-
+# ✅ Subscription Data Storage
 SUBSCRIPTION_FILE = "subscribed_users.json"
 
 def load_subscriptions():
@@ -40,6 +46,7 @@ def save_subscriptions():
 
 subscribed_users = load_subscriptions()
 
+# ✅ Telegram Bot Handlers
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
     chat_id = message.chat.id
@@ -50,6 +57,7 @@ Our mission is to empower you with precise, real-time trading signals and action
 Explore the future of trading today. Let’s elevate your strategy together.
 """
 
+    # ✅ Send Welcome Video
     video_path = "videos/welcome.mp4"
     if os.path.exists(video_path):
         video = FSInputFile(video_path)
@@ -58,6 +66,7 @@ Explore the future of trading today. Let’s elevate your strategy together.
         logging.error(f"❌ Video not found: {video_path}")
         await message.answer("⚠️ Welcome video not found. Please contact support.")
 
+    # ✅ Show Main Menu Button
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🚀 Try VPASS Pro Now", callback_data="show_main_buttons")]
@@ -65,38 +74,39 @@ Explore the future of trading today. Let’s elevate your strategy together.
     )
     await bot.send_message(chat_id=chat_id, text=welcome_text, reply_markup=keyboard)
 
+# ✅ TradingView Webhook Handler
 @app.post("/tradingview")
 async def tradingview_alert(request: Request):
     try:
         data = await request.json()
         message = data.get("message", "🔔 New TradingView Alert!")
+
+        # ✅ Send alerts only to subscribed users
         for user in subscribed_users:
             try:
                 await bot.send_message(chat_id=user, text=message)
             except Exception as e:
                 logging.error(f"❌ Failed to send message to {user}: {e}")
+        
         return {"status": "success"}
+    
     except Exception as e:
         logging.error(f"❌ Error receiving TradingView alert: {e}")
         return {"status": "error", "message": str(e)}
 
-import asyncio
-import uvicorn
-
+# ✅ Start Bot and API Together
 async def start_bot():
-    print("🚀 Starting Telegram Bot...")
-    await dp.start_polling(bot)  # Start Aiogram bot
+    print("🤖 Telegram Bot is Running...")
+    await dp.start_polling(bot)
 
 async def start_api():
-    print("🌍 Starting FastAPI Server...")
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Start FastAPI
+    print("🌍 FastAPI Server is Running...")
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
 
 async def main():
     task1 = asyncio.create_task(start_bot())
     task2 = asyncio.create_task(start_api())
-    await asyncio.gather(task1, task2)  # Run both tasks together
+    await asyncio.gather(task1, task2)
 
 if __name__ == "__main__":
-    asyncio.run(main())  # Start everything
-
-
+    asyncio.run(main())  # ✅ Start Everything Together
