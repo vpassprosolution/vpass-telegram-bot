@@ -137,10 +137,29 @@ async def unsubscribe_gold(callback_query: types.CallbackQuery):
     else:
         await callback_query.answer("⚠️ You are not subscribed!")
 
-# ✅ Handle "Coming Soon" for other assets
-@dp.callback_query(lambda c: c.data in ["bitcoin_signal", "dowjones_signal", "eth_signal"])
-async def coming_soon(callback_query: types.CallbackQuery):
-    await callback_query.answer("🚧 Coming Soon! 🚀", show_alert=True)
+# ✅ Handle TradingView webhook alerts (Only sends to subscribed users)
+@app.post("/tradingview")
+async def tradingview_alert(request: Request):
+    try:
+        data = await request.json()
+        message = data.get("message", "🔔 New TradingView Alert!")
+
+        if not subscribed_users:
+            logging.info("⚠️ No users are subscribed, skipping message.")
+            return {"status": "no_subscribers"}
+
+        for user in subscribed_users:
+            try:
+                await bot.send_message(chat_id=user, text=message)
+                logging.info(f"✅ Sent TradingView alert to {user}")
+            except Exception as e:
+                logging.error(f"❌ Failed to send message to {user}: {e}")
+
+        return {"status": "success", "sent_to": len(subscribed_users)}
+    
+    except Exception as e:
+        logging.error(f"❌ Error receiving TradingView alert: {e}")
+        return {"status": "error", "message": str(e)}
 
 # ✅ Run Telegram bot and FastAPI server together
 async def start_bot():
