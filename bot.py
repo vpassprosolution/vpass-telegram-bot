@@ -18,6 +18,7 @@ if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
 
 WEBHOOK_URL = "WEBHOOK_URL = "https://web-production-ceec.up.railway.app/webhook"
+"
 "  # ✅ Replace with your actual Railway bot URL
 
 logging.basicConfig(level=logging.INFO)
