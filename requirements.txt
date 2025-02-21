@@ -2,7 +2,8 @@ python-telegram-bot==20.0
 
 flask
 
-flask
 gunicorn
+
 python-telegram-bot
 
+uvicorn
