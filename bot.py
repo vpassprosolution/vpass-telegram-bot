@@ -99,9 +99,14 @@ async def start_bot():
     print("🤖 Telegram Bot is Running...")
     await dp.start_polling(bot)
 
+import uvicorn
+
 async def start_api():
-    print("🌍 FastAPI Server is Running...")
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+    print("🌍 Starting FastAPI Server...")
+    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+    server = uvicorn.Server(config)
+    await server.serve()
+
 
 async def main():
     task1 = asyncio.create_task(start_bot())
