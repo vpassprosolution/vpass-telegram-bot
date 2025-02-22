@@ -73,6 +73,117 @@ From smart solutions to seamless interactions,VPass Pro delivers premium support
     )
     await bot.send_message(chat_id=chat_id, text=welcome_text, reply_markup=keyboard)
 
+# ✅ Define the list of allowed admins (Your Telegram User ID)
+ADMIN_IDS = {"6756668018"}  # 🔹 You are now the admin!
+
+# ✅ Load allowed users (users who can use the bot)
+ALLOWED_USERS_FILE = "allowed_users.json"
+
+def load_allowed_users():
+    if os.path.exists(ALLOWED_USERS_FILE):
+        with open(ALLOWED_USERS_FILE, "r") as file:
+            return set(json.load(file))
+    return set()
+
+def save_allowed_users():
+    with open(ALLOWED_USERS_FILE, "w") as file:
+        json.dump(list(allowed_users), file)
+
+allowed_users = load_allowed_users()
+
+# ✅ Handle /admin command
+@dp.message(Command("admin"))
+async def admin_panel(message: types.Message):
+    chat_id = str(message.chat.id)
+    
+    # Check if the user is an admin
+    if chat_id not in ADMIN_IDS:
+        await message.reply("❌ You are not authorized to use this command.")
+        return
+    
+    # Show admin options
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Add User", callback_data="add_user")],
+            [InlineKeyboardButton(text="❌ Remove User", callback_data="remove_user")],
+            [InlineKeyboardButton(text="📜 List Users", callback_data="list_users")],
+            [InlineKeyboardButton(text="🔍 Check User", callback_data="check_user")]
+        ]
+    )
+    await message.reply("⚙️ Admin Panel", reply_markup=keyboard)
+
+# ✅ Handle "Add User" button
+@dp.callback_query(lambda c: c.data == "add_user")
+async def add_user_prompt(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("✏️ Send the **username** of the user to add (without @).")
+
+@dp.message(lambda message: message.text and message.text.startswith("add "))
+async def add_user(message: types.Message):
+    chat_id = str(message.chat.id)
+    if chat_id not in ADMIN_IDS:
+        return
+    
+    username = message.text.replace("add ", "").strip().lower()
+    if username in allowed_users:
+        await message.reply(f"✅ {username} is already allowed!")
+    else:
+        allowed_users.add(username)
+        save_allowed_users()
+        await message.reply(f"✅ {username} has been **added** to the allowed users!")
+
+# ✅ Handle "Remove User" button
+@dp.callback_query(lambda c: c.data == "remove_user")
+async def remove_user_prompt(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("✏️ Send the **username** of the user to remove.")
+
+@dp.message(lambda message: message.text and message.text.startswith("remove "))
+async def remove_user(message: types.Message):
+    chat_id = str(message.chat.id)
+    if chat_id not in ADMIN_IDS:
+        return
+    
+    username = message.text.replace("remove ", "").strip().lower()
+    if username in allowed_users:
+        allowed_users.remove(username)
+        save_allowed_users()
+        await message.reply(f"❌ {username} has been **removed** from the allowed users!")
+    else:
+        await message.reply(f"⚠️ {username} is not in the allowed users list!")
+
+# ✅ Handle "List Users" button
+@dp.callback_query(lambda c: c.data == "list_users")
+async def list_users(callback_query: types.CallbackQuery):
+    if not allowed_users:
+        await callback_query.message.edit_text("📜 No allowed users found.")
+    else:
+        user_list = "\n".join(f"✅ {user}" for user in allowed_users)
+        await callback_query.message.edit_text(f"📜 **Allowed Users:**\n\n{user_list}")
+
+# ✅ Handle "Check User" button
+@dp.callback_query(lambda c: c.data == "check_user")
+async def check_user_prompt(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("✏️ Send the **username** to check.")
+
+@dp.message(lambda message: message.text and message.text.startswith("check "))
+async def check_user(message: types.Message):
+    chat_id = str(message.chat.id)
+    if chat_id not in ADMIN_IDS:
+        return
+    
+    username = message.text.replace("check ", "").strip().lower()
+    if username in allowed_users:
+        await message.reply(f"✅ {username} is **allowed** to use the bot!")
+    else:
+        await message.reply(f"❌ {username} is **NOT** allowed to use the bot.")
+
+# ✅ Restrict bot usage to allowed users
+@dp.message()
+async def restrict_usage(message: types.Message):
+    username = message.from_user.username.lower() if message.from_user.username else None
+    if username not in allowed_users:
+        await message.reply("❌ You are not authorized to use this bot.")
+
+
 # ✅ Handle "Try VPASS Pro Now" button
 @dp.callback_query(lambda c: c.data == "show_main_buttons")
 async def show_main_buttons(callback_query: types.CallbackQuery):
