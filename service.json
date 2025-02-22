@@ -1,23 +1,9 @@
 {
-  "build": {
-    "base": "python",
-    "commands": [
-      "pip install -r requirements.txt"
-    ]
-  },
-  "start": {
-    "cmd": "gunicorn -w 4 -b 0.0.0.0:8080 bot_code.bot:app"
-  }
+  "allowed_users": [
+    "adminvpass",
+    "user1",
+    "user2"
+  ]
 }
 
-{
-    "admin_id": "6756668018",
-    "allowed_users": []
-}
 
-{
-  "allowed_users": ["6756668018"]
-}
-{
-  "allowed_users": ["adminvpass"]
-}
