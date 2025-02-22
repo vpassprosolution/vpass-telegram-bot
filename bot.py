@@ -62,8 +62,7 @@ async def start_command(message: types.Message):
     # Send the welcome message
     welcome_text = """Welcome to VPASS PRO version 2.0 
 Your AI-Powered Trading Companion Your exclusive AI assistant, designed for those who value efficiency and sophistication.
-From smart solutions to seamless interactions,
-VPass Pro delivers premium support tailored just for you.
+From smart solutions to seamless interactions,VPass Pro delivers premium support tailored just for you.
 """
 
     keyboard = InlineKeyboardMarkup(
