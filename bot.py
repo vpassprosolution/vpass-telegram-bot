@@ -305,17 +305,18 @@ async def get_market_analysis(instrument: str):
             logging.error(f"Not enough market data for {ticker}.")
             return "⚠️ Not enough market data to analyze trends."
 
-        latest_price = df["Close"].iloc[-1]  # ✅ Extract latest price correctly
-        prev_price = df["Close"].iloc[-2]
-        prev_prev_price = df["Close"].iloc[-3]  # ✅ Extract third last price correctly
+        # ✅ Convert to floats correctly
+        latest_price = float(df["Close"].iloc[-1])
+        prev_price = float(df["Close"].iloc[-2])
+        prev_prev_price = float(df["Close"].iloc[-3])
 
         price_change = latest_price - prev_price
         percent_change = (price_change / prev_price) * 100
 
         # ✅ Ensure only valid numbers are used in the condition
-        if float(latest_price) > float(prev_price) > float(prev_prev_price):  
+        if latest_price > prev_price > prev_prev_price:  
             trend = "Bullish"
-        elif float(latest_price) < float(prev_price) < float(prev_prev_price):
+        elif latest_price < prev_price < prev_prev_price:
             trend = "Bearish"
         else:
             trend = "Neutral"
@@ -334,7 +335,7 @@ async def get_market_analysis(instrument: str):
             stop_loss = None
             take_profit = None
 
-        # Format response
+        # ✅ Fix string formatting by using properly converted float values
         response = (
             f"📊 **{instrument.upper()} Market Analysis**\n\n"
             f"💰 **Latest Price**: {latest_price:.2f} USD\n"
