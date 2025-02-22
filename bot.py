@@ -49,6 +49,16 @@ subscribed_users = load_subscriptions()
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
     chat_id = message.chat.id
+    
+    # Send the welcome image first
+    image_path = "welcome.png"  # Ensure this file is in the same folder as bot.py
+    if os.path.exists(image_path):
+        photo = FSInputFile(image_path)
+        await bot.send_photo(chat_id=chat_id, photo=photo)
+    else:
+        logging.warning("Welcome image not found!")
+    
+    # Send the welcome message
     welcome_text = """Welcome to VPASS Pro – Your AI-Powered Trading Companion
 
 At VPASS Pro, we redefine trading excellence through cutting-edge AI technology.
