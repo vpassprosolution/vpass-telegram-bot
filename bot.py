@@ -13,6 +13,42 @@ import asyncio
 from dotenv import load_dotenv
 import yfinance as yf 
 
+# ✅ VPASS AI SENTIMENT API URL (Use your actual Railway URL)
+VPASS_AI_SENTIMENT_URL = "https://vpassaisentiment-production.up.railway.app/sentiment/"
+
+# ✅ Function to fetch sentiment analysis from VPASS AI SENTIMENT
+async def get_sentiment(instrument):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{VPASS_AI_SENTIMENT_URL}{instrument}")
+            if response.status_code == 200:
+                return response.json()["sentiment_analysis"]
+            else:
+                return "⚠️ Failed to fetch sentiment analysis. Try again later."
+    except Exception as e:
+        return f"⚠️ Error fetching sentiment data: {str(e)}"
+
+# ✅ Handle /sentiment command in the bot
+@dp.message(Command("sentiment"))
+async def sentiment_command(message: types.Message):
+    instrument = message.text.replace("/sentiment", "").strip().upper()
+
+    if instrument in ["XAUUSD", "BTC", "ETH", "DJI", "IXIC", "EURUSD", "GBPUSD"]:
+        sentiment_report = await get_sentiment(instrument)
+
+        # Add a "🔄 Start Again" button
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]]
+        )
+
+        await message.reply(sentiment_report, reply_markup=keyboard)
+    else:
+        await message.reply("⚠️ Invalid instrument. Use one of: XAUUSD, BTC, ETH, DJI, IXIC, EURUSD, GBPUSD.")
+
+
+
+
+
 
 # AI Super Agent API URL
 AI_SUPER_AGENT_URL = "https://aisuperagent-production.up.railway.app/ai-signal"
