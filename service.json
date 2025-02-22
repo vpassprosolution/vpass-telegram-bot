@@ -14,3 +14,7 @@
     "admin_id": "6756668018",
     "allowed_users": []
 }
+
+{
+  "allowed_users": ["6756668018"]
+}
