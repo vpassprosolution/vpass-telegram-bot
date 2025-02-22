@@ -13,6 +13,18 @@ import asyncio
 from dotenv import load_dotenv
 import yfinance as yf 
 
+
+
+# ✅ Load bot token from .env file
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is missing. Please check your .env file.")# ✅ Initialize bot and dispatcher
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+
+
 # ✅ VPASS AI SENTIMENT API URL (Use your actual Railway URL)
 VPASS_AI_SENTIMENT_URL = "https://vpassaisentiment-production.up.railway.app/sentiment/"
 
@@ -46,10 +58,6 @@ async def sentiment_command(message: types.Message):
         await message.reply("⚠️ Invalid instrument. Use one of: XAUUSD, BTC, ETH, DJI, IXIC, EURUSD, GBPUSD.")
 
 
-
-
-
-
 # AI Super Agent API URL
 AI_SUPER_AGENT_URL = "https://aisuperagent-production.up.railway.app/ai-signal"
 
@@ -80,12 +88,7 @@ async def get_ai_signal():
         return f"⚠️ Error fetching AI signal: {str(e)}"
 
 
-# ✅ Load bot token from .env file
-load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
 
 # ✅ Define Webhook URL - Ensure it's the correct Railway bot service URL
 WEBHOOK_URL = "https://web-production-ceec.up.railway.app/webhook"
@@ -93,10 +96,7 @@ WEBHOOK_URL = "https://web-production-ceec.up.railway.app/webhook"
 # ✅ Setup logging for debugging
 logging.basicConfig(level=logging.INFO)
 
-# ✅ Initialize bot and dispatcher
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(storage=MemoryStorage())  
-
+  
 @dp.callback_query(lambda c: c.data.startswith("unsubscribe_signal_"))
 async def unsubscribe_from_signal(callback_query: types.CallbackQuery):
     chat_id = callback_query.message.chat.id
