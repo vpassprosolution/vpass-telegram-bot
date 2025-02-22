@@ -9,3 +9,8 @@
     "cmd": "gunicorn -w 4 -b 0.0.0.0:8080 bot_code.bot:app"
   }
 }
+
+{
+    "admin_id": "6756668018",
+    "allowed_users": []
+}
