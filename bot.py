@@ -199,7 +199,7 @@ async def restrict_usage(message: types.Message):
 async def show_main_buttons(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📊 AI Signal", callback_data="ai_signal")],
+            [InlineKeyboardButton(text="📊 VPASS SMART SIGNAL", callback_data="ai_signal")],
             [
                 InlineKeyboardButton(text="🌍 Forex Factory", url="https://www.forexfactory.com/"),
                 InlineKeyboardButton(text="🔍 Deepseek", url="https://www.deepseek.com/")
@@ -210,7 +210,7 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
             ]
         ]
     )
-    await callback_query.message.edit_text("Access Your Exclusive Trading Tools:", reply_markup=keyboard)
+    await callback_query.message.edit_text("⬇️Access Your Exclusive Trading Tools⬇️", reply_markup=keyboard)
 
 # ✅ Handle AI Signal button
 @dp.callback_query(lambda c: c.data == "ai_signal")
@@ -233,7 +233,7 @@ async def ai_signal(callback_query: types.CallbackQuery):
             [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
         ]
     )
-    await callback_query.message.edit_text("Choose Your Instrument:", reply_markup=keyboard)
+    await callback_query.message.edit_text(" Choose Your Favorite Instruments ", reply_markup=keyboard)
 
 # ✅ Function to create subscribe/unsubscribe keyboard
 async def instrument_signal(callback_query: types.CallbackQuery, instrument: str):
