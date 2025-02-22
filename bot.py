@@ -296,15 +296,15 @@ async def get_market_analysis(instrument: str):
     try:
         df = yf.download(ticker, period="1d", interval="5m")  # ✅ Ensured df is initialized
 
-        if df.empty or df.shape[0] == 0:
-            logging.error(f"No market data available for {ticker}.")  # ✅ Fixed: Used `ticker`
+        if df.empty:  # ✅ Fixed: Removed invalid Series comparison
+            logging.error(f"No market data available for {ticker}.")
             return "⚠️ Market data not available. Try again later."
 
         latest_data = df.iloc[-1]  # ✅ Now it will only run if data exists
         
         # Extract latest price details
-        latest_price = df['Close'].iloc[-1]
-        prev_price = df['Close'].iloc[-2]
+        latest_price = latest_data["Close"]
+        prev_price = df["Close"].iloc[-2]
         price_change = latest_price - prev_price
         percent_change = (price_change / prev_price) * 100
 
@@ -327,6 +327,7 @@ async def get_market_analysis(instrument: str):
     except Exception as e:
         logging.error(f"Error fetching data for {instrument}: {e}")
         return "❌ Error fetching market data. Try again later."
+
 
 
 # ✅ Handle Market Analysis Request
