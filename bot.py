@@ -9,6 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from fastapi import FastAPI, Request
 from aiogram.types import FSInputFile
 import uvicorn
+import asyncio
 from dotenv import load_dotenv
 
 # ✅ Load bot token from .env file
@@ -141,38 +142,43 @@ async def instrument_signal_handler(callback_query: types.CallbackQuery):
     instrument = instrument_mapping.get(callback_query.data, "Unknown")
     await instrument_signal(callback_query, instrument)
 
-# ✅ Handle Subscribe to Signals
+# ✅ Handle Subscribe to Signals (with disappearing effect)
 @dp.callback_query(lambda c: c.data.startswith("subscribe_"))
 async def subscribe_signal(callback_query: types.CallbackQuery):
     chat_id = str(callback_query.message.chat.id)
     instrument = callback_query.data.replace("subscribe_", "")
+    
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://tradingviewwebhook-production.up.railway.app/subscribe",
             json={"user_id": chat_id, "instrument": instrument}
         )
+    
     if response.status_code == 200:
-        await callback_query.answer(f"✅ Subscribed to {instrument} Signals!")
-        await bot.send_message(chat_id=chat_id, text=f"📩 You are now subscribed to {instrument} Signals.")
+        sent_message = await bot.send_message(chat_id=chat_id, text=f"✅ Subscribed to {instrument} Signals!")
+        await asyncio.sleep(3)  # Wait 3 seconds
+        await bot.delete_message(chat_id=chat_id, message_id=sent_message.message_id)
     else:
         await callback_query.answer("❌ Subscription failed. Try again later.")
 
-# ✅ Handle Unsubscribe from Signals
+# ✅ Handle Unsubscribe from Signals (with disappearing effect)
 @dp.callback_query(lambda c: c.data.startswith("unsubscribe_"))
 async def unsubscribe_signal(callback_query: types.CallbackQuery):
     chat_id = str(callback_query.message.chat.id)
     instrument = callback_query.data.replace("unsubscribe_", "")
+    
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://tradingviewwebhook-production.up.railway.app/unsubscribe",
             json={"user_id": chat_id, "instrument": instrument}
         )
+    
     if response.status_code == 200:
-        await callback_query.answer(f"🚫 Unsubscribed from {instrument} Signals!")
-        await bot.send_message(chat_id=chat_id, text=f"❌ You have unsubscribed from {instrument} Signals.")
+        sent_message = await bot.send_message(chat_id=chat_id, text=f"🚫 Unsubscribed from {instrument} Signals!")
+        await asyncio.sleep(3)  # Wait 3 seconds
+        await bot.delete_message(chat_id=chat_id, message_id=sent_message.message_id)
     else:
         await callback_query.answer("❌ Unsubscription failed. Try again later.")
-
 # ✅ Webhook for Telegram Updates
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
