@@ -255,8 +255,16 @@ async def ai_super_agent(callback_query: types.CallbackQuery):
     # Fetch AI recommendation
     ai_signal_message = await get_ai_signal()
     
-    # Send the AI signal result to the user
-    await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown")
+    # ✅ Add "🔄 Start Again" Button
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
+        ]
+    )
+
+    # Send the AI signal result to the user with the button
+    await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown", reply_markup=keyboard)
+
 
 
 
@@ -354,16 +362,27 @@ async def get_market_analysis(instrument: str):
 
 
 # ✅ Handle Market Analysis Request
+# Handle Market Analysis Request
 @dp.callback_query(lambda c: c.data.startswith("analyze_"))
 async def analyze_market(callback_query: types.CallbackQuery):
     instrument = callback_query.data.replace("analyze_", "")
     analysis = await get_market_analysis(instrument)
-    
-    await callback_query.message.edit_text(analysis, parse_mode="Markdown")
+
+    # ✅ Add "🔄 Start Again" Button
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
+        ]
+    )
+
+    # Send the analysis result with the button
+    await callback_query.message.edit_text(analysis, parse_mode="Markdown", reply_markup=keyboard)
+
 
 
 
 # ✅ Handle AI Signal button
+# Handle AI Signal button
 @dp.callback_query(lambda c: c.data == "ai_signal")
 async def ai_signal(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
@@ -381,10 +400,11 @@ async def ai_signal(callback_query: types.CallbackQuery):
                 InlineKeyboardButton(text="📈 EUR/USD", callback_data="eurusd_signal"),
                 InlineKeyboardButton(text="📊 GBP/USD", callback_data="gbpusd_signal")
             ],
-            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]  # ✅ Added Start Again Button
         ]
     )
-    await callback_query.message.edit_text(" Choose Your Favorite Instruments ", reply_markup=keyboard)
+    await callback_query.message.edit_text("Choose Your Favorite Instruments:", reply_markup=keyboard)
+
 
 # ✅ Function to create subscribe/unsubscribe keyboard
 async def instrument_signal(callback_query: types.CallbackQuery, instrument: str):
