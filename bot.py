@@ -250,20 +250,31 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data == "ai_super_agent")
 async def ai_super_agent(callback_query: types.CallbackQuery):
     chat_id = callback_query.message.chat.id
-    await bot.send_message(chat_id, "🔍 Fetching AI Super Agent recommendation... Please wait.")
 
-    # Fetch AI recommendation
+    # ✅ Step 1: Send "Fetching AI Super Agent recommendation..." message
+    waiting_message = await bot.send_message(chat_id, "🔍 Fetching AI Super Agent recommendation... Please wait.")
+
+    # ✅ Step 2: Fetch AI recommendation
     ai_signal_message = await get_ai_signal()
     
-    # ✅ Add "🔄 Start Again" Button
+    # ✅ Step 3: Send AI Signal Result with "Start Again" Button
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
         ]
     )
 
-    # Send the AI signal result to the user with the button
+    await asyncio.sleep(2)  # ✅ Wait 2 seconds to make it look smooth before deleting
+
+    # ✅ Step 4: Delete ONLY the "Fetching AI recommendation..." message
+    try:
+        await bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
+    except Exception:
+        pass  # Ignore error if the message was already deleted
+
+    # ✅ Step 5: Finally, send the AI recommendation (This will stay!)
     await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown", reply_markup=keyboard)
+
 
 
 
