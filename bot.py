@@ -7,6 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from fastapi import FastAPI, Request
+from aiogram.types import FSInputFile
 import uvicorn
 from dotenv import load_dotenv
 
