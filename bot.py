@@ -332,6 +332,184 @@ async def tradingview_alert(request: Request):
         logging.error(f"❌ Error receiving TradingView alert: {e}")
         return {"status": "error", "message": str(e)}
 
+
+import httpx
+import logging
+import os
+import json
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
+from aiogram.fsm.storage.memory import MemoryStorage
+from fastapi import FastAPI, Request
+from aiogram.types import FSInputFile
+import uvicorn
+import asyncio
+from dotenv import load_dotenv
+import yfinance as yf  # ✅ For market data
+import openai  # ✅ AI for trading insights
+
+# ✅ Load bot token from .env file
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+openai.api_key = os.getenv("OPENAI_API_KEY")  # ✅ Load OpenAI API Key
+
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is missing. Please check your .env file.")
+
+# ✅ Define Webhook URL
+WEBHOOK_URL = "https://web-production-ceec.up.railway.app/webhook"
+
+# ✅ Setup logging for debugging
+logging.basicConfig(level=logging.INFO)
+
+# ✅ Initialize bot and dispatcher
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())  
+
+# ✅ Initialize FastAPI
+app = FastAPI()
+
+SUBSCRIPTION_FILE = "subscribed_users.json"
+
+# ✅ Load and save subscriptions for TradingView alerts
+def load_subscriptions():
+    if os.path.exists(SUBSCRIPTION_FILE):
+        with open(SUBSCRIPTION_FILE, "r") as file:
+            return set(json.load(file))
+    return set()
+
+def save_subscriptions():
+    with open(SUBSCRIPTION_FILE, "w") as file:
+        json.dump(list(subscribed_users), file)
+
+subscribed_users = load_subscriptions()
+
+# ✅ Modify "Try VPASS Pro Now" button (Added Market Analysis)
+@dp.callback_query(lambda c: c.data == "show_main_buttons")
+async def show_main_buttons(callback_query: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📊 VPASS SMART SIGNAL", callback_data="ai_signal")],
+            [InlineKeyboardButton(text="📈 Market Analysis", callback_data="market_analysis")],  # ✅ New Button
+            [
+                InlineKeyboardButton(text="🌍 Forex Factory", url="https://www.forexfactory.com/"),
+                InlineKeyboardButton(text="🔍 Deepseek", url="https://www.deepseek.com/")
+            ],
+            [
+                InlineKeyboardButton(text="💬 Discord", url="https://discord.com/"),
+                InlineKeyboardButton(text="🤖 ChatGPT", url="https://chatgpt.com/")
+            ]
+        ]
+    )
+    await callback_query.message.edit_text("⬇️Access Your Exclusive Trading Tools⬇️", reply_markup=keyboard)
+
+# ✅ Market Analysis Button Handler
+@dp.callback_query(lambda c: c.data == "market_analysis")
+async def market_analysis(callback_query: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🏆 Gold", callback_data="analyze_gold"),
+                InlineKeyboardButton(text="📈 Bitcoin", callback_data="analyze_btc")
+            ],
+            [
+                InlineKeyboardButton(text="📈 Ethereum", callback_data="analyze_eth"),
+                InlineKeyboardButton(text="📈 NASDAQ", callback_data="analyze_nasdaq")
+            ],
+            [
+                InlineKeyboardButton(text="📈 Dow Jones", callback_data="analyze_dow"),
+                InlineKeyboardButton(text="📈 EUR/USD", callback_data="analyze_eurusd")
+            ],
+            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
+        ]
+    )
+    await callback_query.message.edit_text("📊 Select an instrument for market analysis:", reply_markup=keyboard)
+
+# ✅ Market Analysis Function (Fetch Data)
+def get_market_data(ticker_symbol):
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        data = ticker.history(period="1d")
+
+        if data.empty:
+            return None
+
+        latest_price = data["Close"].iloc[-1]
+        previous_close = data["Close"].iloc[-2]
+
+        percent_change = ((latest_price - previous_close) / previous_close) * 100
+
+        return {
+            "latest_price": round(latest_price, 2),
+            "percent_change": round(percent_change, 2)
+        }
+    except Exception as e:
+        logging.error(f"Error fetching market data: {e}")
+        return None
+
+# ✅ AI Analysis & Recommendation
+def generate_ai_summary(ticker_name, latest_price, percent_change):
+    try:
+        trend = "increasing" if percent_change > 0 else "decreasing"
+        action = "BUY" if percent_change > 0 else "SELL"
+
+        prompt = f"""
+        The {ticker_name} market is currently {trend} with a price of ${latest_price}, changing {percent_change:.2f}% today.
+        What is your expert trading recommendation for this market? Provide a short summary.
+        """
+
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "system", "content": "You are a professional financial analyst."},
+                      {"role": "user", "content": prompt}]
+        )
+
+        summary = response["choices"][0]["message"]["content"]
+        return f"📊 **{ticker_name} Market Analysis**\n\n{summary}\n\n💡 Recommendation: **{action}**"
+
+    except Exception as e:
+        logging.error(f"Error generating AI summary: {e}")
+        return "⚠️ AI analysis failed. Try again later."
+
+# ✅ Ticker Mapping
+ticker_mapping = {
+    "analyze_gold": "GC=F",
+    "analyze_btc": "BTC-USD",
+    "analyze_eth": "ETH-USD",
+    "analyze_nasdaq": "^IXIC",
+    "analyze_dow": "^DJI",
+    "analyze_eurusd": "EURUSD=X"
+}
+
+# ✅ Handle Market Analysis Requests
+@dp.callback_query(lambda c: c.data.startswith("analyze_"))
+async def analyze_market(callback_query: types.CallbackQuery):
+    instrument = callback_query.data
+    ticker_symbol = ticker_mapping.get(instrument)
+
+    if not ticker_symbol:
+        await callback_query.answer("⚠️ Invalid instrument selected.")
+        return
+
+    # Fetch market data
+    market_data = get_market_data(ticker_symbol)
+
+    if not market_data:
+        await callback_query.answer("⚠️ Failed to fetch market data. Try again later.")
+        return
+
+    # Generate AI summary
+    ai_summary = generate_ai_summary(instrument.replace("analyze_", "").upper(), 
+                                     market_data["latest_price"], 
+                                     market_data["percent_change"])
+
+    await callback_query.message.edit_text(ai_summary)
+
+
+
+
+
 # ✅ Set webhook on startup
 @app.on_event("startup")
 async def on_startup():
