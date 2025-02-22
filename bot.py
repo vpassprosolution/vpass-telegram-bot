@@ -337,8 +337,8 @@ async def tradingview_alert(request: Request):
 @app.on_event("startup")
 async def on_startup():
     await bot.set_webhook(WEBHOOK_URL)
-    logging.info(f"🚀 Webhook set: {https://web-production-ceec.up.railway.app/webhook
-}")
+    logging.info(f"🚀 Webhook set: {WEBHOOK_URL}")  # ✅ Fix: Use the variable correctly
+
 
 # ✅ Remove webhook on shutdown
 @app.on_event("shutdown")
