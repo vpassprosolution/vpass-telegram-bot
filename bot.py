@@ -11,6 +11,8 @@ from aiogram.types import FSInputFile
 import uvicorn
 import asyncio
 from dotenv import load_dotenv
+import yfinance as yf 
+
 
 # ✅ Load bot token from .env file
 load_dotenv()
@@ -200,6 +202,7 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📊 VPASS SMART SIGNAL", callback_data="ai_signal")],
+            [InlineKeyboardButton(text="📈 AI Market Analysis", callback_data="market_analysis")],  # ✅ New Button
             [
                 InlineKeyboardButton(text="🌍 Forex Factory", url="https://www.forexfactory.com/"),
                 InlineKeyboardButton(text="🔍 Deepseek", url="https://www.deepseek.com/")
@@ -211,6 +214,83 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
         ]
     )
     await callback_query.message.edit_text("⬇️Access Your Exclusive Trading Tools⬇️", reply_markup=keyboard)
+
+
+# ✅ Handle AI Market Analysis Button
+@dp.callback_query(lambda c: c.data == "market_analysis")
+async def market_analysis(callback_query: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🥇 Gold", callback_data="analyze_gold"),
+                InlineKeyboardButton(text="₿ Bitcoin", callback_data="analyze_bitcoin")
+            ],
+            [
+                InlineKeyboardButton(text="💹 EUR/USD", callback_data="analyze_eurusd"),
+                InlineKeyboardButton(text="📊 NASDAQ", callback_data="analyze_nasdaq")
+            ],
+            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
+        ]
+    )
+    await callback_query.message.edit_text("📊 Choose an instrument for AI analysis:", reply_markup=keyboard)
+
+# ✅ Fetch & Analyze Market Data
+async def get_market_analysis(instrument: str):
+    symbols = {
+        "gold": "GC=F",       # Gold Futures
+        "bitcoin": "BTC-USD", # Bitcoin
+        "eurusd": "EURUSD=X", # EUR/USD Forex
+        "nasdaq": "^IXIC"     # NASDAQ Index
+    }
+    
+    ticker = symbols.get(instrument.lower())
+    
+    if not ticker:
+        return "⚠️ Invalid instrument selected."
+    
+    # Fetch latest market data
+    try:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period="1d")
+        
+        if hist.empty:
+            return "⚠️ No recent market data found."
+        
+        # Extract latest price details
+        latest_price = hist['Close'].iloc[-1]
+        prev_price = hist['Close'].iloc[-2]
+        price_change = latest_price - prev_price
+        percent_change = (price_change / prev_price) * 100
+
+        # AI-Based Recommendation
+        if percent_change > 0.5:
+            recommendation = "🔼 **Buy** (Uptrend Detected)"
+        elif percent_change < -0.5:
+            recommendation = "🔽 **Sell** (Downtrend Detected)"
+        else:
+            recommendation = "⚖️ **Hold** (Sideways Market)"
+
+        # Format response
+        response = (
+            f"📊 **{instrument.upper()} Market Analysis**\n\n"
+            f"💰 **Latest Price**: {latest_price:.2f} USD\n"
+            f"📈 **Change**: {price_change:.2f} USD ({percent_change:.2f}%)\n"
+            f"💡 **Recommendation**: {recommendation}"
+        )
+        return response
+    except Exception as e:
+        logging.error(f"Error fetching data for {instrument}: {e}")
+        return "❌ Error fetching market data. Try again later."
+
+# ✅ Handle Market Analysis Request
+@dp.callback_query(lambda c: c.data.startswith("analyze_"))
+async def analyze_market(callback_query: types.CallbackQuery):
+    instrument = callback_query.data.replace("analyze_", "")
+    analysis = await get_market_analysis(instrument)
+    
+    await callback_query.message.edit_text(analysis, parse_mode="Markdown")
+
+
 
 # ✅ Handle AI Signal button
 @dp.callback_query(lambda c: c.data == "ai_signal")
