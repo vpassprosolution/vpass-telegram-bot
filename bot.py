@@ -279,7 +279,8 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📊 VPASS SMART SIGNAL", callback_data="ai_signal")],
-            [InlineKeyboardButton(text="🤖 AI Super Agent", callback_data="ai_super_agent")],  # ✅ Added AI Super Agent button
+            [InlineKeyboardButton(text="📉 VPASS AI Sentiment", callback_data="ai_sentiment")],  # ✅ NEW BUTTON
+            [InlineKeyboardButton(text="🤖 AI Super Agent", callback_data="ai_super_agent")],  
             [InlineKeyboardButton(text="📈 AI Market Analysis", callback_data="market_analysis")],
             [
                 InlineKeyboardButton(text="🌍 Forex Factory", url="https://www.forexfactory.com/"),
@@ -294,6 +295,21 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text("⬇️ Access Your Exclusive Trading Tools ⬇️", reply_markup=keyboard)
 
 
+@dp.callback_query(lambda c: c.data == "ai_sentiment")
+async def ai_sentiment_menu(callback_query: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🥇 Gold", callback_data="sentiment_XAUUSD")],
+            [InlineKeyboardButton(text="₿ Bitcoin", callback_data="sentiment_BTC")],
+            [InlineKeyboardButton(text="💎 Ethereum", callback_data="sentiment_ETH")],
+            [InlineKeyboardButton(text="📊 Dow Jones", callback_data="sentiment_DJI")],
+            [InlineKeyboardButton(text="📈 Nasdaq", callback_data="sentiment_IXIC")],
+            [InlineKeyboardButton(text="💹 EUR/USD", callback_data="sentiment_EURUSD")],
+            [InlineKeyboardButton(text="💷 GBP/USD", callback_data="sentiment_GBPUSD")],
+            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
+        ]
+    )
+    await callback_query.message.edit_text("📉 Choose an instrument for sentiment analysis:", reply_markup=keyboard)
 # Handle AI Super Agent Button Click
 @dp.callback_query(lambda c: c.data == "ai_super_agent")
 async def ai_super_agent(callback_query: types.CallbackQuery):
@@ -323,6 +339,20 @@ async def ai_super_agent(callback_query: types.CallbackQuery):
     # ✅ Step 5: Finally, send the AI recommendation (This will stay!)
     await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown", reply_markup=keyboard)
 
+
+@dp.callback_query(lambda c: c.data.startswith("sentiment_"))
+async def fetch_sentiment(callback_query: types.CallbackQuery):
+    instrument = callback_query.data.replace("sentiment_", "")
+    sentiment_report = await get_sentiment(instrument)
+
+    # ✅ Add "🔄 Start Again" Button
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="ai_sentiment")]
+        ]
+    )
+
+    await callback_query.message.edit_text(sentiment_report, parse_mode="Markdown", reply_markup=keyboard)
 
 
 
