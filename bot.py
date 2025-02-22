@@ -61,6 +61,18 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())  
 
+@dp.callback_query(lambda c: c.data.startswith("unsubscribe_signal_"))
+async def unsubscribe_from_signal(callback_query: types.CallbackQuery):
+    chat_id = callback_query.message.chat.id
+
+    # ✅ Remove user from the subscription list
+    if chat_id in subscribed_users:
+        subscribed_users.remove(chat_id)
+        save_subscriptions()
+        await callback_query.message.edit_text("🚫 You have been unsubscribed from AI signals.")
+    else:
+        await callback_query.message.answer("⚠️ You are not currently subscribed.")
+
 # ✅ Initialize FastAPI
 app = FastAPI()
 
@@ -491,7 +503,7 @@ async def telegram_webhook(request: Request):
     await dp.feed_update(bot, update_obj)
     return {"status": "ok"}
 
-# ✅ Handle TradingView alerts and forward to subscribers
+# ✅ Handle TradingView AI Signal Alerts
 @app.post("/tradingview")
 async def tradingview_alert(request: Request):
     try:
@@ -504,8 +516,18 @@ async def tradingview_alert(request: Request):
 
         for user in subscribed_users:
             try:
-                await bot.send_message(chat_id=user, text=message)
+                # ✅ Add "Start Again" & "Unsubscribe" Buttons
+                keyboard = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="🚫 Unsubscribe", callback_data=f"unsubscribe_signal_{user}")],
+                        [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
+                    ]
+                )
+
+                # ✅ Send AI Signal Alert with Buttons
+                await bot.send_message(chat_id=user, text=message, reply_markup=keyboard)
                 logging.info(f"✅ Sent TradingView alert to {user}")
+
             except Exception as e:
                 logging.error(f"❌ Failed to send message to {user}: {e}")
 
@@ -514,6 +536,7 @@ async def tradingview_alert(request: Request):
     except Exception as e:
         logging.error(f"❌ Error receiving TradingView alert: {e}")
         return {"status": "error", "message": str(e)}
+
 
 # ✅ Set webhook on startup
 @app.on_event("startup")
