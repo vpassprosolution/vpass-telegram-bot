@@ -95,53 +95,81 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
 async def ai_signal(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🥇 Gold", callback_data="gold_signal")],
+            [InlineKeyboardButton(text="🏆 Gold", callback_data="gold_signal")],
+            [
+                InlineKeyboardButton(text="📈 Bitcoin", callback_data="bitcoin_signal"),
+                InlineKeyboardButton(text="📈 Ethereum", callback_data="eth_signal")
+            ],
+            [
+                InlineKeyboardButton(text="📈 Dow Jones", callback_data="dowjones_signal"),
+                InlineKeyboardButton(text="📈 NASDAQ", callback_data="nasdaq_signal")
+            ],
+            [
+                InlineKeyboardButton(text="📈 EUR/USD", callback_data="eurusd_signal"),
+                InlineKeyboardButton(text="📊 GBP/USD", callback_data="gbpusd_signal")
+            ],
             [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
         ]
     )
     await callback_query.message.edit_text("Choose Your Instrument:", reply_markup=keyboard)
 
-# ✅ Handle Gold signal button
-@dp.callback_query(lambda c: c.data == "gold_signal")
-async def gold_signal(callback_query: types.CallbackQuery):
+# ✅ Function to create subscribe/unsubscribe keyboard
+async def instrument_signal(callback_query: types.CallbackQuery, instrument: str):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="📩 Subscribe Gold Signal", callback_data="subscribe_gold"),
-                InlineKeyboardButton(text="🚫 Unsubscribe Gold Signal", callback_data="unsubscribe_gold")
+                InlineKeyboardButton(text=f"📩 Subscribe {instrument} Signal", callback_data=f"subscribe_{instrument}"),
+                InlineKeyboardButton(text=f"🚫 Unsubscribe {instrument} Signal", callback_data=f"unsubscribe_{instrument}")
             ],
             [InlineKeyboardButton(text="🔙 Back", callback_data="ai_signal")]
         ]
     )
-    await callback_query.message.edit_text("Gold Signal Options:", reply_markup=keyboard)
+    await callback_query.message.edit_text(f"{instrument} Signal Options:", reply_markup=keyboard)
 
-# ✅ Handle Subscribe to Gold Signals
-@dp.callback_query(lambda c: c.data == "subscribe_gold")
-async def subscribe_gold(callback_query: types.CallbackQuery):
+# ✅ Handle different instrument buttons
+@dp.callback_query(lambda c: c.data in ["gold_signal", "bitcoin_signal", "eth_signal", "dowjones_signal", "nasdaq_signal", "eurusd_signal", "gbpusd_signal"])
+async def instrument_signal_handler(callback_query: types.CallbackQuery):
+    instrument_mapping = {
+        "gold_signal": "Gold",
+        "bitcoin_signal": "Bitcoin",
+        "eth_signal": "Ethereum",
+        "dowjones_signal": "Dow Jones",
+        "nasdaq_signal": "NASDAQ",
+        "eurusd_signal": "EUR/USD",
+        "gbpusd_signal": "GBP/USD"
+    }
+    instrument = instrument_mapping.get(callback_query.data, "Unknown")
+    await instrument_signal(callback_query, instrument)
+
+# ✅ Handle Subscribe to Signals
+@dp.callback_query(lambda c: c.data.startswith("subscribe_"))
+async def subscribe_signal(callback_query: types.CallbackQuery):
     chat_id = str(callback_query.message.chat.id)
+    instrument = callback_query.data.replace("subscribe_", "")
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://tradingviewwebhook-production.up.railway.app/subscribe",
-            json={"user_id": chat_id}
+            json={"user_id": chat_id, "instrument": instrument}
         )
     if response.status_code == 200:
-        await callback_query.answer("✅ Subscribed to Gold Signals!")
-        await bot.send_message(chat_id=chat_id, text="📩 You are now subscribed to Gold Signals.")
+        await callback_query.answer(f"✅ Subscribed to {instrument} Signals!")
+        await bot.send_message(chat_id=chat_id, text=f"📩 You are now subscribed to {instrument} Signals.")
     else:
         await callback_query.answer("❌ Subscription failed. Try again later.")
 
-# ✅ Handle Unsubscribe from Gold Signals
-@dp.callback_query(lambda c: c.data == "unsubscribe_gold")
-async def unsubscribe_gold(callback_query: types.CallbackQuery):
+# ✅ Handle Unsubscribe from Signals
+@dp.callback_query(lambda c: c.data.startswith("unsubscribe_"))
+async def unsubscribe_signal(callback_query: types.CallbackQuery):
     chat_id = str(callback_query.message.chat.id)
+    instrument = callback_query.data.replace("unsubscribe_", "")
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://tradingviewwebhook-production.up.railway.app/unsubscribe",
-            json={"user_id": chat_id}
+            json={"user_id": chat_id, "instrument": instrument}
         )
     if response.status_code == 200:
-        await callback_query.answer("🚫 Unsubscribed from Gold Signals!")
-        await bot.send_message(chat_id=chat_id, text="❌ You have unsubscribed from Gold Signals.")
+        await callback_query.answer(f"🚫 Unsubscribed from {instrument} Signals!")
+        await bot.send_message(chat_id=chat_id, text=f"❌ You have unsubscribed from {instrument} Signals.")
     else:
         await callback_query.answer("❌ Unsubscription failed. Try again later.")
 
