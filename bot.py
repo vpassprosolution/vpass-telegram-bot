@@ -14,6 +14,36 @@ from dotenv import load_dotenv
 import yfinance as yf 
 
 
+# AI Super Agent API URL
+AI_SUPER_AGENT_URL = "https://aisuperagent-production.up.railway.app/ai-signal"
+
+# Function to fetch AI trading signals
+async def get_ai_signal():
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(AI_SUPER_AGENT_URL, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                if "error" in data:
+                    return f"⚠️ AI Super Agent Error: {data['error']}"
+                
+                # Format the response message
+                message = f"""
+📊 **AI Super Agent Signal for XAUUSD**  
+
+💰 **Gold Price:** {data['gold_price']}  
+📈 **Trend:** {data['trend']}  
+✅ **Decision:** {data['decision']}  
+⛔ **Stop Loss:** {data['stop_loss']}  
+🎯 **Take Profit:** {data['take_profit']}  
+"""
+                return message
+            else:
+                return "⚠️ AI Super Agent is not responding. Please try again later."
+    except Exception as e:
+        return f"⚠️ Error fetching AI signal: {str(e)}"
+
+
 # ✅ Load bot token from .env file
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -195,14 +225,14 @@ async def restrict_usage(message: types.Message):
 
 
 
-
 # ✅ Handle "Try VPASS Pro Now" button
 @dp.callback_query(lambda c: c.data == "show_main_buttons")
 async def show_main_buttons(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📊 VPASS SMART SIGNAL", callback_data="ai_signal")],
-            [InlineKeyboardButton(text="📈 AI Market Analysis", callback_data="market_analysis")],  # ✅ New Button
+            [InlineKeyboardButton(text="🤖 AI Super Agent", callback_data="ai_super_agent")],  # ✅ Added AI Super Agent button
+            [InlineKeyboardButton(text="📈 AI Market Analysis", callback_data="market_analysis")],
             [
                 InlineKeyboardButton(text="🌍 Forex Factory", url="https://www.forexfactory.com/"),
                 InlineKeyboardButton(text="🔍 Deepseek", url="https://www.deepseek.com/")
@@ -213,7 +243,21 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
             ]
         ]
     )
-    await callback_query.message.edit_text("⬇️Access Your Exclusive Trading Tools⬇️", reply_markup=keyboard)
+    await callback_query.message.edit_text("⬇️ Access Your Exclusive Trading Tools ⬇️", reply_markup=keyboard)
+
+
+# Handle AI Super Agent Button Click
+@dp.callback_query(lambda c: c.data == "ai_super_agent")
+async def ai_super_agent(callback_query: types.CallbackQuery):
+    chat_id = callback_query.message.chat.id
+    await bot.send_message(chat_id, "🔍 Fetching AI Super Agent recommendation... Please wait.")
+
+    # Fetch AI recommendation
+    ai_signal_message = await get_ai_signal()
+    
+    # Send the AI signal result to the user
+    await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown")
+
 
 
 # ✅ Handle AI Market Analysis Button
@@ -250,11 +294,12 @@ async def get_market_analysis(instrument: str):
     
     # Fetch latest market data
     try:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period="1d")
-        
-        if hist.empty:
-            return "⚠️ No recent market data found."
+        if df.empty or df.shape[0] == 0:
+    logging.error(f"No market data available for {symbol}.")
+    return "⚠️ Market data not available. Try again later."
+
+latest_data = df.iloc[-1]  # Now it will only run if data exists
+
         
         # Extract latest price details
         latest_price = hist['Close'].iloc[-1]
