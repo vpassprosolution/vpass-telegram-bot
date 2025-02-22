@@ -294,39 +294,61 @@ async def get_market_analysis(instrument: str):
     
     # Fetch latest market data
     try:
-        df = yf.download(ticker, period="1d", interval="5m")  # ✅ Ensured df is initialized
+        df = yf.download(ticker, period="1d", interval="5m")  # ✅ Ensure df is initialized
 
-        if df.empty:  # ✅ Fixed: Removed invalid Series comparison
+        if df.empty:  # ✅ Check if DataFrame is empty correctly
             logging.error(f"No market data available for {ticker}.")
             return "⚠️ Market data not available. Try again later."
 
-        latest_data = df.iloc[-1]  # ✅ Now it will only run if data exists
-        
-        # Extract latest price details
-        latest_price = latest_data["Close"]
+        # Ensure there are enough rows before accessing indices
+        if len(df) < 3:
+            logging.error(f"Not enough market data for {ticker}.")
+            return "⚠️ Not enough market data to analyze trends."
+
+        latest_price = df["Close"].iloc[-1]  # ✅ Extract latest price correctly
         prev_price = df["Close"].iloc[-2]
+        prev_prev_price = df["Close"].iloc[-3]  # ✅ Extract third last price correctly
+
         price_change = latest_price - prev_price
         percent_change = (price_change / prev_price) * 100
 
+        # ✅ Ensure only valid numbers are used in the condition
+        if float(latest_price) > float(prev_price) > float(prev_prev_price):  
+            trend = "Bullish"
+        elif float(latest_price) < float(prev_price) < float(prev_prev_price):
+            trend = "Bearish"
+        else:
+            trend = "Neutral"
+
         # AI-Based Recommendation
-        if percent_change > 0.5:
+        if trend == "Bullish":
             recommendation = "🔼 **Buy** (Uptrend Detected)"
-        elif percent_change < -0.5:
+            stop_loss = round(latest_price - 2, 2)
+            take_profit = round(latest_price + 4, 2)
+        elif trend == "Bearish":
             recommendation = "🔽 **Sell** (Downtrend Detected)"
+            stop_loss = round(latest_price + 2, 2)
+            take_profit = round(latest_price - 4, 2)
         else:
             recommendation = "⚖️ **Hold** (Sideways Market)"
+            stop_loss = None
+            take_profit = None
 
         # Format response
         response = (
             f"📊 **{instrument.upper()} Market Analysis**\n\n"
             f"💰 **Latest Price**: {latest_price:.2f} USD\n"
             f"📈 **Change**: {price_change:.2f} USD ({percent_change:.2f}%)\n"
-            f"💡 **Recommendation**: {recommendation}"
+            f"📉 **Trend**: {trend}\n"
+            f"💡 **Recommendation**: {recommendation}\n"
+            f"⛔ **Stop Loss**: {stop_loss}\n"
+            f"🎯 **Take Profit**: {take_profit}"
         )
         return response
     except Exception as e:
         logging.error(f"Error fetching data for {instrument}: {e}")
         return "❌ Error fetching market data. Try again later."
+
 
 
 
