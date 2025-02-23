@@ -26,7 +26,7 @@ dp = Dispatcher(storage=MemoryStorage())
 
 
 # ✅ VPASS AI SENTIMENT API URL (Use your actual Railway URL)
-VPASS_AI_SENTIMENT_URL = "https://vpassaisentiment-production.up.railway.app/sentiment/"
+VPASS_AI_SENTIMENT_URL = "https://sentiment-data-centre-production.up.railway.app/sentiment/"
 
 # ✅ Function to fetch sentiment analysis from VPASS AI SENTIMENT
 async def get_sentiment(instrument):
