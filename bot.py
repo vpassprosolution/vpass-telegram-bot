@@ -120,7 +120,7 @@ async def ai_signal(callback_query: types.CallbackQuery):
                 InlineKeyboardButton(text="📈 EUR/USD", callback_data="eurusd_signal"),
                 InlineKeyboardButton(text="📊 GBP/USD", callback_data="gbpusd_signal")
             ],
-            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]  # ✅ Added Start Again Button
+            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]  # ✅ Added Start Again Button
         ]
     )
     await callback_query.message.edit_text("Choose Your Favorite Instruments:", reply_markup=keyboard)
@@ -273,6 +273,64 @@ async def fetch_sentiment(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text(sentiment_report, parse_mode="Markdown", reply_markup=keyboard)
 
 
+# ✅ Dictionary to store user messages
+user_messages = {}
+
+# ✅ Handle AI Super Agent Button Click
+@dp.callback_query(lambda c: c.data == "ai_super_agent")
+async def ai_super_agent(callback_query: types.CallbackQuery):
+    chat_id = callback_query.message.chat.id
+
+    # ✅ Step 1: Send "Fetching AI Super Agent recommendation..." message
+    waiting_message = await bot.send_message(chat_id, "🔍 Fetching AI Super Agent recommendation... Please wait.")
+
+    # ✅ Step 2: Fetch AI recommendation
+    ai_signal_message = await get_ai_signal()
+    
+    # ✅ Step 3: Send AI Signal Result with "Start Again" Button
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="start_again_main")]
+        ]
+    )
+
+    await asyncio.sleep(2)  # ✅ Wait 2 seconds for a smooth effect
+
+    # ✅ Step 4: Delete "Fetching AI Recommendation..." message
+    try:
+        await bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
+    except Exception:
+        pass  # Ignore error if already deleted
+
+    # ✅ Step 5: Send the AI recommendation message
+    sent_message = await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown", reply_markup=keyboard)
+
+    # ✅ Step 6: Store all messages in a list for this user
+    if chat_id not in user_messages:
+        user_messages[chat_id] = []
+    
+    # Store message IDs
+    user_messages[chat_id].append(sent_message.message_id)
+
+
+# ✅ Handle "Start Again" Button: Delete ALL Previous Messages
+@dp.callback_query(lambda c: c.data == "start_again_main")
+async def start_again_main(callback_query: types.CallbackQuery):
+    chat_id = callback_query.message.chat.id
+
+    # ✅ Step 1: Delete **ALL previous messages** stored for this user
+    if chat_id in user_messages:
+        for message_id in user_messages[chat_id]:
+            try:
+                await bot.delete_message(chat_id=chat_id, message_id=message_id)
+            except Exception:
+                pass  # Ignore errors if message is already deleted
+
+        # ✅ Clear message history after deleting
+        user_messages[chat_id] = []
+
+    # ✅ Step 2: Show Main Buttons Again
+    await show_main_buttons(callback_query)
 
 
 
