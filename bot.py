@@ -15,6 +15,7 @@ import yfinance as yf
 
 
 
+
 # ✅ Load bot token from .env file
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -24,90 +25,13 @@ if not BOT_TOKEN:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-
-# ✅ VPASS AI SENTIMENT API URL (Use your actual Railway URL)
-VPASS_AI_SENTIMENT_URL = "https://sentiment-data-centre-production.up.railway.app/sentiment/"
-
-# ✅ Function to fetch sentiment analysis from VPASS AI SENTIMENT
-async def get_sentiment(instrument):
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{VPASS_AI_SENTIMENT_URL}{instrument}")
-            if response.status_code == 200:
-                return response.json()["sentiment_analysis"]
-            else:
-                return "⚠️ Failed to fetch sentiment analysis. Try again later."
-    except Exception as e:
-        return f"⚠️ Error fetching sentiment data: {str(e)}"
-
-# ✅ Handle /sentiment command in the bot
-@dp.message(Command("sentiment"))
-async def sentiment_command(message: types.Message):
-    instrument = message.text.replace("/sentiment", "").strip().upper()
-
-    if instrument in ["XAUUSD", "BTC", "ETH", "DJI", "IXIC", "EURUSD", "GBPUSD"]:
-        sentiment_report = await get_sentiment(instrument)
-
-        # Add a "🔄 Start Again" button
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]]
-        )
-
-        await message.reply(sentiment_report, reply_markup=keyboard)
-    else:
-        await message.reply("⚠️ Invalid instrument. Use one of: XAUUSD, BTC, ETH, DJI, IXIC, EURUSD, GBPUSD.")
-
-
-# AI Super Agent API URL
-AI_SUPER_AGENT_URL = "https://aisuperagent-production.up.railway.app/ai-signal"
-
-# Function to fetch AI trading signals
-async def get_ai_signal():
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(AI_SUPER_AGENT_URL, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if "error" in data:
-                    return f"⚠️ AI Super Agent Error: {data['error']}"
-                
-                # Format the response message
-                message = f"""
-📊 **AI Super Agent Signal for XAUUSD**  
-
-💰 **Gold Price:** {data['gold_price']}  
-📈 **Trend:** {data['trend']}  
-✅ **Decision:** {data['decision']}  
-⛔ **Stop Loss:** {data['stop_loss']}  
-🎯 **Take Profit:** {data['take_profit']}  
-"""
-                return message
-            else:
-                return "⚠️ AI Super Agent is not responding. Please try again later."
-    except Exception as e:
-        return f"⚠️ Error fetching AI signal: {str(e)}"
-
-
-
-
 # ✅ Define Webhook URL - Ensure it's the correct Railway bot service URL
 WEBHOOK_URL = "https://web-production-ceec.up.railway.app/webhook"
+
 
 # ✅ Setup logging for debugging
 logging.basicConfig(level=logging.INFO)
 
-  
-@dp.callback_query(lambda c: c.data.startswith("unsubscribe_signal_"))
-async def unsubscribe_from_signal(callback_query: types.CallbackQuery):
-    chat_id = callback_query.message.chat.id
-
-    # ✅ Remove user from the subscription list
-    if chat_id in subscribed_users:
-        subscribed_users.remove(chat_id)
-        save_subscriptions()
-        await callback_query.message.edit_text("🚫 You have been unsubscribed from AI signals.")
-    else:
-        await callback_query.message.answer("⚠️ You are not currently subscribed.")
 
 # ✅ Initialize FastAPI
 app = FastAPI()
@@ -126,6 +50,7 @@ def save_subscriptions():
         json.dump(list(subscribed_users), file)
 
 subscribed_users = load_subscriptions()
+
 
 # ✅ Handle /start command
 @dp.message(Command("start"))
@@ -153,125 +78,6 @@ From smart solutions to seamless interactions,VPass Pro delivers premium support
     )
     await bot.send_message(chat_id=chat_id, text=welcome_text, reply_markup=keyboard)
 
-# ✅ Define the list of allowed admins (Your Telegram User ID)
-ADMIN_IDS = {"6756668018"}  # 🔹 You are now the admin!
-
-# ✅ Load allowed users from service.json (Store Usernames)
-SERVICE_FILE = "service.json"
-
-def load_allowed_users():
-    if os.path.exists(SERVICE_FILE):
-        with open(SERVICE_FILE, "r") as file:
-            data = json.load(file)
-            return set(data.get("allowed_users", []))  # Load usernames from JSON
-    return set()
-
-def save_allowed_users():
-    with open(SERVICE_FILE, "r") as file:
-        data = json.load(file)
-    
-    data["allowed_users"] = list(allowed_users)
-
-    with open(SERVICE_FILE, "w") as file:
-        json.dump(data, file, indent=4)
-
-allowed_users = load_allowed_users()
-
-# ✅ Handle /admin command (Admin Panel)
-@dp.message(Command("admin"))
-async def admin_panel(message: types.Message):
-    chat_id = str(message.chat.id)
-
-    # Check if user is an admin
-    if chat_id not in ADMIN_IDS:
-        await message.reply("❌ You are not authorized to use this command.")
-        return
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="➕ Add User", callback_data="add_user")],
-            [InlineKeyboardButton(text="❌ Remove User", callback_data="remove_user")],
-            [InlineKeyboardButton(text="📜 List Users", callback_data="list_users")],
-            [InlineKeyboardButton(text="🔍 Check User", callback_data="check_user")]
-        ]
-    )
-    await message.reply("⚙️ Admin Panel", reply_markup=keyboard)
-
-# ✅ Handle "Add User" (Using Username)
-@dp.callback_query(lambda c: c.data == "add_user")
-async def add_user_prompt(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text("✏️ Send the **username** of the user to add (without @).")
-
-@dp.message(lambda message: message.text and message.text.startswith("add "))
-async def add_user(message: types.Message):
-    chat_id = str(message.chat.id)
-    if chat_id not in ADMIN_IDS:
-        return
-
-    username = message.text.replace("add ", "").strip().lower()
-    
-    if username in allowed_users:
-        await message.reply(f"✅ @{username} is already allowed!")
-    else:
-        allowed_users.add(username)
-        save_allowed_users()
-        await message.reply(f"✅ @{username} has been **added** to the allowed users!")
-
-# ✅ Handle "Remove User" (Using Username)
-@dp.callback_query(lambda c: c.data == "remove_user")
-async def remove_user_prompt(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text("✏️ Send the **username** of the user to remove.")
-
-@dp.message(lambda message: message.text and message.text.startswith("remove "))
-async def remove_user(message: types.Message):
-    chat_id = str(message.chat.id)
-    if chat_id not in ADMIN_IDS:
-        return
-
-    username = message.text.replace("remove ", "").strip().lower()
-
-    if username in allowed_users:
-        allowed_users.remove(username)
-        save_allowed_users()
-        await message.reply(f"❌ @{username} has been **removed** from the allowed users!")
-    else:
-        await message.reply(f"⚠️ @{username} is not in the allowed users list!")
-
-# ✅ Handle "List Users" (Show Usernames)
-@dp.callback_query(lambda c: c.data == "list_users")
-async def list_users(callback_query: types.CallbackQuery):
-    if not allowed_users:
-        await callback_query.message.edit_text("📜 No allowed users found.")
-    else:
-        user_list = "\n".join(f"✅ @{user}" for user in allowed_users)
-        await callback_query.message.edit_text(f"📜 **Allowed Users:**\n\n{user_list}")
-
-# ✅ Handle "Check User" (Using Username)
-@dp.callback_query(lambda c: c.data == "check_user")
-async def check_user_prompt(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text("✏️ Send the **username** to check.")
-
-@dp.message(lambda message: message.text and message.text.startswith("check "))
-async def check_user(message: types.Message):
-    chat_id = str(message.chat.id)
-    if chat_id not in ADMIN_IDS:
-        return
-
-    username = message.text.replace("check ", "").strip().lower()
-
-    if username in allowed_users:
-        await message.reply(f"✅ @{username} is **allowed** to use the bot!")
-    else:
-        await message.reply(f"❌ @{username} is **NOT** allowed to use the bot.")
-
-# ✅ Restrict bot usage to allowed users (Check Username)
-@dp.message()
-async def restrict_usage(message: types.Message):
-    username = message.from_user.username.lower() if message.from_user.username else None
-    if username not in allowed_users:
-        await message.reply("❌ You are not authorized to use this bot.")
-
-
 
 # ✅ Handle "Try VPASS Pro Now" button
 @dp.callback_query(lambda c: c.data == "show_main_buttons")
@@ -293,181 +99,6 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
         ]
     )
     await callback_query.message.edit_text("⬇️ Access Your Exclusive Trading Tools ⬇️", reply_markup=keyboard)
-
-
-@dp.callback_query(lambda c: c.data == "ai_sentiment")
-async def ai_sentiment_menu(callback_query: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🥇 Gold", callback_data="sentiment_XAUUSD")],
-            [InlineKeyboardButton(text="₿ Bitcoin", callback_data="sentiment_BTC")],
-            [InlineKeyboardButton(text="💎 Ethereum", callback_data="sentiment_ETH")],
-            [InlineKeyboardButton(text="📊 Dow Jones", callback_data="sentiment_DJI")],
-            [InlineKeyboardButton(text="📈 Nasdaq", callback_data="sentiment_IXIC")],
-            [InlineKeyboardButton(text="💹 EUR/USD", callback_data="sentiment_EURUSD")],
-            [InlineKeyboardButton(text="💷 GBP/USD", callback_data="sentiment_GBPUSD")],
-            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
-        ]
-    )
-    await callback_query.message.edit_text("📉 Choose an instrument for sentiment analysis:", reply_markup=keyboard)
-# Handle AI Super Agent Button Click
-@dp.callback_query(lambda c: c.data == "ai_super_agent")
-async def ai_super_agent(callback_query: types.CallbackQuery):
-    chat_id = callback_query.message.chat.id
-
-    # ✅ Step 1: Send "Fetching AI Super Agent recommendation..." message
-    waiting_message = await bot.send_message(chat_id, "🔍 Fetching AI Super Agent recommendation... Please wait.")
-
-    # ✅ Step 2: Fetch AI recommendation
-    ai_signal_message = await get_ai_signal()
-    
-    # ✅ Step 3: Send AI Signal Result with "Start Again" Button
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
-        ]
-    )
-
-    await asyncio.sleep(2)  # ✅ Wait 2 seconds to make it look smooth before deleting
-
-    # ✅ Step 4: Delete ONLY the "Fetching AI recommendation..." message
-    try:
-        await bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
-    except Exception:
-        pass  # Ignore error if the message was already deleted
-
-    # ✅ Step 5: Finally, send the AI recommendation (This will stay!)
-    await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown", reply_markup=keyboard)
-
-
-@dp.callback_query(lambda c: c.data.startswith("sentiment_"))
-async def fetch_sentiment(callback_query: types.CallbackQuery):
-    instrument = callback_query.data.replace("sentiment_", "")
-    sentiment_report = await get_sentiment(instrument)
-
-    # ✅ Add "🔄 Start Again" Button
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔄 Start Again", callback_data="ai_sentiment")]
-        ]
-    )
-
-    await callback_query.message.edit_text(sentiment_report, parse_mode="Markdown", reply_markup=keyboard)
-
-
-
-
-# ✅ Handle AI Market Analysis Button
-@dp.callback_query(lambda c: c.data == "market_analysis")
-async def market_analysis(callback_query: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🥇 Gold", callback_data="analyze_gold"),
-                InlineKeyboardButton(text="₿ Bitcoin", callback_data="analyze_bitcoin")
-            ],
-            [
-                InlineKeyboardButton(text="💹 EUR/USD", callback_data="analyze_eurusd"),
-                InlineKeyboardButton(text="📊 NASDAQ", callback_data="analyze_nasdaq")
-            ],
-            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
-        ]
-    )
-    await callback_query.message.edit_text("📊 Choose an instrument for AI analysis:", reply_markup=keyboard)
-
-# ✅ Fetch & Analyze Market Data
-async def get_market_analysis(instrument: str):
-    symbols = {
-        "gold": "GC=F",       # Gold Futures
-        "bitcoin": "BTC-USD", # Bitcoin
-        "eurusd": "EURUSD=X", # EUR/USD Forex
-        "nasdaq": "^IXIC"     # NASDAQ Index
-    }
-    
-    ticker = symbols.get(instrument.lower())
-    
-    if not ticker:
-        return "⚠️ Invalid instrument selected."
-    
-    # Fetch latest market data
-    try:
-        df = yf.download(ticker, period="1d", interval="5m")  # ✅ Ensure df is initialized
-
-        if df.empty:  # ✅ Check if DataFrame is empty correctly
-            logging.error(f"No market data available for {ticker}.")
-            return "⚠️ Market data not available. Try again later."
-
-        # Ensure there are enough rows before accessing indices
-        if len(df) < 3:
-            logging.error(f"Not enough market data for {ticker}.")
-            return "⚠️ Not enough market data to analyze trends."
-
-        # ✅ Convert to floats correctly
-        latest_price = float(df["Close"].iloc[-1])
-        prev_price = float(df["Close"].iloc[-2])
-        prev_prev_price = float(df["Close"].iloc[-3])
-
-        price_change = latest_price - prev_price
-        percent_change = (price_change / prev_price) * 100
-
-        # ✅ Ensure only valid numbers are used in the condition
-        if latest_price > prev_price > prev_prev_price:  
-            trend = "Bullish"
-        elif latest_price < prev_price < prev_prev_price:
-            trend = "Bearish"
-        else:
-            trend = "Neutral"
-
-        # AI-Based Recommendation
-        if trend == "Bullish":
-            recommendation = "🔼 **Buy** (Uptrend Detected)"
-            stop_loss = round(latest_price - 2, 2)
-            take_profit = round(latest_price + 4, 2)
-        elif trend == "Bearish":
-            recommendation = "🔽 **Sell** (Downtrend Detected)"
-            stop_loss = round(latest_price + 2, 2)
-            take_profit = round(latest_price - 4, 2)
-        else:
-            recommendation = "⚖️ **Hold** (Sideways Market)"
-            stop_loss = None
-            take_profit = None
-
-        # ✅ Fix string formatting by using properly converted float values
-        response = (
-            f"📊 **{instrument.upper()} Market Analysis**\n\n"
-            f"💰 **Latest Price**: {latest_price:.2f} USD\n"
-            f"📈 **Change**: {price_change:.2f} USD ({percent_change:.2f}%)\n"
-            f"📉 **Trend**: {trend}\n"
-            f"💡 **Recommendation**: {recommendation}\n"
-            f"⛔ **Stop Loss**: {stop_loss}\n"
-            f"🎯 **Take Profit**: {take_profit}"
-        )
-        return response
-    except Exception as e:
-        logging.error(f"Error fetching data for {instrument}: {e}")
-        return "❌ Error fetching market data. Try again later."
-
-
-
-
-# ✅ Handle Market Analysis Request
-# Handle Market Analysis Request
-@dp.callback_query(lambda c: c.data.startswith("analyze_"))
-async def analyze_market(callback_query: types.CallbackQuery):
-    instrument = callback_query.data.replace("analyze_", "")
-    analysis = await get_market_analysis(instrument)
-
-    # ✅ Add "🔄 Start Again" Button
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
-        ]
-    )
-
-    # Send the analysis result with the button
-    await callback_query.message.edit_text(analysis, parse_mode="Markdown", reply_markup=keyboard)
-
-
 
 
 # ✅ Handle AI Signal button
@@ -561,13 +192,6 @@ async def unsubscribe_signal(callback_query: types.CallbackQuery):
     else:
         await callback_query.answer("❌ Unsubscription failed. Try again later.")
 
-# ✅ Webhook for Telegram Updates
-@app.post("/webhook")
-async def telegram_webhook(request: Request):
-    update = await request.json()
-    update_obj = types.Update(**update)
-    await dp.feed_update(bot, update_obj)
-    return {"status": "ok"}
 
 # ✅ Handle TradingView AI Signal Alerts
 @app.post("/tradingview")
@@ -602,6 +226,151 @@ async def tradingview_alert(request: Request):
     except Exception as e:
         logging.error(f"❌ Error receiving TradingView alert: {e}")
         return {"status": "error", "message": str(e)}
+
+
+# ✅ Handle AI Super Agent Button Click
+@dp.callback_query(lambda c: c.data == "ai_super_agent")
+async def ai_super_agent(callback_query: types.CallbackQuery):
+    chat_id = callback_query.message.chat.id
+
+    # ✅ Step 1: Send "Fetching AI Super Agent recommendation..." message
+    waiting_message = await bot.send_message(chat_id, "🔍 Fetching AI Super Agent recommendation... Please wait.")
+
+    # ✅ Step 2: Fetch AI recommendation
+    ai_signal_message = await get_ai_signal()
+    
+    # ✅ Step 3: Send AI Signal Result with "Start Again" Button
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]
+        ]
+    )
+
+    await asyncio.sleep(2)  # ✅ Wait 2 seconds to make it look smooth before deleting
+
+    # ✅ Step 4: Delete ONLY the "Fetching AI recommendation..." message
+    try:
+        await bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
+    except Exception:
+        pass  # Ignore error if the message was already deleted
+
+    # ✅ Step 5: Finally, send the AI recommendation (This will stay!)
+    await bot.send_message(chat_id=chat_id, text=ai_signal_message, parse_mode="Markdown", reply_markup=keyboard)
+
+
+@dp.callback_query(lambda c: c.data.startswith("sentiment_"))
+async def fetch_sentiment(callback_query: types.CallbackQuery):
+    instrument = callback_query.data.replace("sentiment_", "")
+    sentiment_report = await get_sentiment(instrument)
+
+    # ✅ Add "🔄 Start Again" Button
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Start Again", callback_data="ai_sentiment")]
+        ]
+    )
+
+    await callback_query.message.edit_text(sentiment_report, parse_mode="Markdown", reply_markup=keyboard)
+
+
+
+
+
+
+
+
+
+
+# ✅ VPASS AI SENTIMENT API URL (Use your actual Railway URL)
+VPASS_AI_SENTIMENT_URL = "https://sentiment-data-centre-production.up.railway.app/sentiment/"
+
+# ✅ Function to fetch sentiment analysis from VPASS AI SENTIMENT
+async def get_sentiment(instrument):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{VPASS_AI_SENTIMENT_URL}{instrument}")
+            if response.status_code == 200:
+                return response.json()["sentiment_analysis"]
+            else:
+                return "⚠️ Failed to fetch sentiment analysis. Try again later."
+    except Exception as e:
+        return f"⚠️ Error fetching sentiment data: {str(e)}"
+
+# ✅ Handle /sentiment command in the bot
+@dp.message(Command("sentiment"))
+async def sentiment_command(message: types.Message):
+    instrument = message.text.replace("/sentiment", "").strip().upper()
+
+    if instrument in ["XAUUSD", "BTC", "ETH", "DJI", "IXIC", "EURUSD", "GBPUSD"]:
+        sentiment_report = await get_sentiment(instrument)
+
+        # Add a "🔄 Start Again" button
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🔄 Start Again", callback_data="show_main_buttons")]]
+        )
+
+        await message.reply(sentiment_report, reply_markup=keyboard)
+    else:
+        await message.reply("⚠️ Invalid instrument. Use one of: XAUUSD, BTC, ETH, DJI, IXIC, EURUSD, GBPUSD.")
+
+
+# AI Super Agent API URL
+AI_SUPER_AGENT_URL = "https://aisuperagent-production.up.railway.app/ai-signal"
+
+# Function to fetch AI trading signals
+async def get_ai_signal():
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(AI_SUPER_AGENT_URL, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                if "error" in data:
+                    return f"⚠️ AI Super Agent Error: {data['error']}"
+                
+                # Format the response message
+                message = f"""
+📊 **AI Super Agent Signal for XAUUSD**  
+
+💰 **Gold Price:** {data['gold_price']}  
+📈 **Trend:** {data['trend']}  
+✅ **Decision:** {data['decision']}  
+⛔ **Stop Loss:** {data['stop_loss']}  
+🎯 **Take Profit:** {data['take_profit']}  
+"""
+                return message
+            else:
+                return "⚠️ AI Super Agent is not responding. Please try again later."
+    except Exception as e:
+        return f"⚠️ Error fetching AI signal: {str(e)}"
+
+
+
+# ✅ Handle ai sentiment button
+@dp.callback_query(lambda c: c.data == "ai_sentiment")
+async def ai_sentiment_menu(callback_query: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🥇 Gold", callback_data="sentiment_XAUUSD")],
+            [InlineKeyboardButton(text="₿ Bitcoin", callback_data="sentiment_BTC")],
+            [InlineKeyboardButton(text="💎 Ethereum", callback_data="sentiment_ETH")],
+            [InlineKeyboardButton(text="📊 Dow Jones", callback_data="sentiment_DJI")],
+            [InlineKeyboardButton(text="📈 Nasdaq", callback_data="sentiment_IXIC")],
+            [InlineKeyboardButton(text="💹 EUR/USD", callback_data="sentiment_EURUSD")],
+            [InlineKeyboardButton(text="💷 GBP/USD", callback_data="sentiment_GBPUSD")],
+            [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
+        ]
+    )
+    await callback_query.message.edit_text("📉 Choose an instrument for sentiment analysis:", reply_markup=keyboard)
+
+
+
+# ✅ Webhook for Telegram Updates
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    update = await request.json()
+    update_obj = types.Update(**update)
+    await dp.feed_update(bot, update_obj)
+    return {"status": "ok"}
 
 
 # ✅ Set webhook on startup
