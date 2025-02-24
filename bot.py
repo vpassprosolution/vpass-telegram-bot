@@ -351,12 +351,18 @@ async def ai_sentiment_menu(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🥇 Gold", callback_data="sentiment_XAUUSD")],
-            [InlineKeyboardButton(text="₿ Bitcoin", callback_data="sentiment_BTC")],
-            [InlineKeyboardButton(text="💎 Ethereum", callback_data="sentiment_ETH")],
-            [InlineKeyboardButton(text="📊 Dow Jones", callback_data="sentiment_DJI")],
-            [InlineKeyboardButton(text="📈 Nasdaq", callback_data="sentiment_IXIC")],
-            [InlineKeyboardButton(text="💹 EUR/USD", callback_data="sentiment_EURUSD")],
-            [InlineKeyboardButton(text="💷 GBP/USD", callback_data="sentiment_GBPUSD")],
+            [
+                InlineKeyboardButton(text="₿ Bitcoin", callback_data="sentiment_BTC"),
+                InlineKeyboardButton(text="💎 Ethereum", callback_data="sentiment_ETH")
+            ],
+            [
+                InlineKeyboardButton(text="📊 Dow Jones", callback_data="sentiment_DJI"),
+                InlineKeyboardButton(text="📈 Nasdaq", callback_data="sentiment_IXIC")
+            ],
+            [
+                InlineKeyboardButton(text="💹 EUR/USD", callback_data="sentiment_EURUSD"),
+                InlineKeyboardButton(text="💷 GBP/USD", callback_data="sentiment_GBPUSD")
+            ],
             [InlineKeyboardButton(text="🔙 Back", callback_data="show_main_buttons")]
         ]
     )
