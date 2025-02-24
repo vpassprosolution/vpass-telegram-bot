@@ -85,9 +85,9 @@ async def show_main_buttons(callback_query: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📊 VPASS SMART SIGNAL", callback_data="ai_signal")],
-            [InlineKeyboardButton(text="📉 VPASS AI Sentiment", callback_data="ai_sentiment")],  # ✅ NEW BUTTON
-            [InlineKeyboardButton(text="🤖 AI Super Agent", callback_data="ai_super_agent")],  
-            [InlineKeyboardButton(text="📈 AI Market Analysis", callback_data="market_analysis")],
+            [InlineKeyboardButton(text="📉 VPASS AI SENTIMENTS", callback_data="ai_sentiment")],  
+            [InlineKeyboardButton(text="🤖 AI AGENT INSTANTS SIGNAL", callback_data="ai_super_agent")],  
+            
             [
                 InlineKeyboardButton(text="🌍 Forex Factory", url="https://www.forexfactory.com/"),
                 InlineKeyboardButton(text="🔍 Deepseek", url="https://www.deepseek.com/")
